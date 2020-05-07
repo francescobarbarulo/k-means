@@ -12,7 +12,7 @@ def parse_args():
         n = int(sys.argv[sys.argv.index('-n') + 1])
         d = int(sys.argv[sys.argv.index('-d') + 1])
         return n, d
-    except ValueError:
+    except:
         print('Usage: python random_points.py -n <number_of_points> -d <point_dimension>')
         exit(1)
 
