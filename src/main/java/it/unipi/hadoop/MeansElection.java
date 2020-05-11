@@ -22,22 +22,14 @@ public class MeansElection {
 
         final static Random rand = new Random(42);
         final static IntWritable outputKey = new IntWritable();
-        final static Point outputValue = new Point();
+        static Point outputValue;
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
             int N = Integer.parseInt(conf.get("n"));
 
-            String line = value.toString();
-            String[] indicesAndValues = line.split(",");
-
-            double[] coordinates = new double[indicesAndValues.length];
-            for (int i = 0; i < coordinates.length; i++) {
-                coordinates[i] = Double.parseDouble(indicesAndValues[i]);
-            }
-
             outputKey.set(rand.nextInt(N));
-            outputValue.set(coordinates);
+            outputValue = Point.parse(value.toString());
             context.write(outputKey, outputValue);
         }
     }
@@ -63,24 +55,8 @@ public class MeansElection {
         }
     }
 
-    public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
-        Configuration conf = new Configuration();
-        String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
-
-        if (otherArgs.length != 4){
-            System.err.println("Usage: hadoop jar target/kMeans-1.0-SNAPSHOT.jar it.unipi.hadoop.MeansElection <n> <k> <in> <out>");
-            System.exit(1);
-        }
-
-        System.out.println("n=" + otherArgs[0]);
-        System.out.println("k=" + otherArgs[1]);
-        System.out.println("input=" + otherArgs[2]);
-        System.out.println("output=" + otherArgs[3]);
-
-        conf.set("n", otherArgs[0]);
-        conf.set("k", otherArgs[1]);
-
-        Job job = Job.getInstance(conf, "k-means");
+    public static boolean main(Job job) throws IOException, ClassNotFoundException, InterruptedException {
+        Configuration conf = job.getConfiguration();
 
         // Set JAR class
         job.setJarByClass(MeansElection.class);
@@ -99,10 +75,10 @@ public class MeansElection {
         job.setOutputValueClass(Point.class);
 
         // Define input and output path file
-        FileInputFormat.addInputPath(job, new Path(otherArgs[2]));
-        FileOutputFormat.setOutputPath(job, new Path(otherArgs[3]));
+        FileInputFormat.addInputPath(job, new Path(conf.get("input")));
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("intermediateOutput")));
 
         // Exit
-        System.exit(job.waitForCompletion(true) ? 0 : 1);
+        return job.waitForCompletion(true);
     }
 }
