@@ -18,9 +18,9 @@ section{Bruk's proposal for initial random sampling}
 \Class{Mapper}
     \Function{map}{valueId vids, value vs}
         \State\text declare an int array of K size
-        \State\text declare a random generator with seed from the configuration
+        \State\text declare a random generator with seed from the configuration 
         \State\ForAll{elements in the array}
-            \State\text generate random number and assign them the value
+            \State\text generate random number and assign them the value with in the range of total number of points
             \EndFor
         \stat\texte split the value v in to array of strings vals
         \State\ForAll{element in the array}
