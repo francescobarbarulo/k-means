@@ -3,12 +3,15 @@ The k-means Clustering Algorithm in MapReduce
 
 https://www.overleaf.com/9194241676nqmpmykgkkpz
 
+## random sampling algorithm
+before starting the java part, I have modified the point generator to include indexes to identify points uniquely. 
+
 ```
 section{Bruk's proposal for initial random sampling}
     
 \class{Driver}
     \Function{main}
-        \State\text set a seed. K, and number of values for random generation
+        \State\text set a seed, K, and number of values for random generation
         \State\text ... go on to the configuration
     \EndFunction
 \EndClass
