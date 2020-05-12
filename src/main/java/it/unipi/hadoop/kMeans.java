@@ -1,14 +1,29 @@
 package it.unipi.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.util.Scanner;
 
 public class kMeans {
+
+    private static void deleteDir(File f){
+        if (f.isDirectory()){
+            File[] entries = f.listFiles();
+            if (entries != null) {
+                for (File e : entries) {
+                    e.delete();
+                }
+            }
+        }
+        f.delete();
+    }
+
     public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
         Configuration conf = new Configuration();
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
@@ -29,16 +44,45 @@ public class kMeans {
         conf.set("k", otherArgs[2]);
         conf.set("input", otherArgs[3]);
         conf.set("output", otherArgs[4]);
-        conf.set("intermediateOutput", "starting-means/");
+        conf.set("startingMeans", "starting-means");
+        conf.set("finalMeans", "final-means");
+
+        double previousErr = Double.POSITIVE_INFINITY;
+        double err = Double.POSITIVE_INFINITY;
+
+        deleteDir(new File(conf.get("startingMeans")));
+        deleteDir(new File(conf.get("finalMeans")));
+        deleteDir(new File(conf.get("output")));
 
         Job meansElection = Job.getInstance(conf, "means election");
         boolean meansElectionExit = MeansElection.main(meansElection);
 
-        DistributedCache.addCacheFile(new Path(conf.get("intermediateOutput")+"part-r-00000").toUri(), conf);
+        for (int i = 0; i < 2; i++) {
+            System.out.println("\n======== NEW STEP ========\n");
 
-        Job clustering = Job.getInstance(conf, "clustering");
-        boolean clusteringExit = Clustering.main(clustering);
+            previousErr = err;
 
-        System.exit((meansElectionExit && clusteringExit) ? 0 : 1);
+            Job clustering = Job.getInstance(conf, "clustering");
+            if (i == 0)
+                clustering.addCacheFile(new Path(conf.get("startingMeans") + "/part-r-00000").toUri());
+            else
+                clustering.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
+            boolean clusteringExit = Clustering.main(clustering);
+
+            Job convergence = Job.getInstance(conf, "convergence");
+            if (i == 0)
+                convergence.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
+            else
+                convergence.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
+            boolean convergenceExit = Convergence.main(convergence);
+
+            File f = new File(conf.get("output")+"/part-r-00000");
+            Scanner sc = new Scanner(f);
+
+            if ( !sc.hasNextLine() ) { System.exit(1); }
+
+            err = Double.parseDouble(sc.nextLine());
+            System.out.println("******ERR: " + err + "*********");
+        }
     }
 }

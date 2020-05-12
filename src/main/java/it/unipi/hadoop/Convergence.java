@@ -2,6 +2,7 @@ package it.unipi.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
@@ -19,62 +20,55 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
-public class Clustering {
-    public static class ClusteringMapper extends Mapper<LongWritable, Text, Point, Point> {
+public class Convergence {
+    public static class ConvergenceMapper extends Mapper<LongWritable, Text, Point, DoubleWritable> {
 
-        static List<Point> startingMeans;
+        static List<Point> finalMeans;
+        final static DoubleWritable outputValue = new DoubleWritable();
 
         protected void setup(Context context) throws FileNotFoundException {
-            startingMeans = new ArrayList<>();
+            finalMeans = new ArrayList<>();
 
-            File means = new File(context.getConfiguration().get("startingMeans")+"/part-r-00000");
+            File means = new File(context.getConfiguration().get("finalMeans")+"/part-r-00000");
             Scanner sc = new Scanner(means);
             while (sc.hasNextLine()){
-                startingMeans.add(Point.parse(sc.nextLine()));
+                finalMeans.add(Point.parse(sc.nextLine()));
             }
 
-            System.out.println("\n***STARTING MEANS***");
-            System.out.println(startingMeans.toString() + "\n");
+            System.out.println("\n***FINAL MEANS***");
+            System.out.println(finalMeans.toString() + "\n");
         }
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             double minDistance = Double.POSITIVE_INFINITY;
-            int meanIndex = -1;
 
             Point p = Point.parse(value.toString());
 
-            for (Point m: startingMeans){
+            for (Point m: finalMeans){
                 double d = p.getDistance(m);
                 if (d < minDistance){
                     minDistance = d;
-                    meanIndex = startingMeans.indexOf(m);
                 }
             }
 
-            context.write(startingMeans.get(meanIndex), p);
+            outputValue.set(minDistance);
+            context.write(p, outputValue);
         }
     }
 
-    public static class ClusteringReducer extends Reducer<Point, Point, NullWritable, Point> {
+    public static class ConvergenceReducer extends Reducer<Point, DoubleWritable, NullWritable, DoubleWritable> {
 
-        public void reduce(Point key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
-            Configuration conf = context.getConfiguration();
+        static double sum = 0.0;
+        final static DoubleWritable outputValue = new DoubleWritable();
 
-            double[] coordinates = new double[Integer.parseInt(conf.get("d"))];
-            Arrays.fill(coordinates, 0);
+        public void reduce(Point key, Iterable<DoubleWritable> values, Context context) throws IOException, InterruptedException {
+            for (DoubleWritable v: values)
+                sum += v.get();
+        }
 
-            Point centroid = new Point(coordinates);
-            int n = 0;
-
-            for (Point p: values){
-                centroid.add(p);
-                n++;
-            }
-            centroid.div(n);
-
-            System.out.println("\n*** NEW MEAN ***");
-            System.out.println(centroid + "\n");
-            context.write(null, centroid);
+        public void cleanup(Context context) throws IOException, InterruptedException {
+            outputValue.set(sum);
+            context.write(null, outputValue);
         }
     }
 
@@ -82,23 +76,23 @@ public class Clustering {
         Configuration conf = job.getConfiguration();
 
         // Set JAR class
-        job.setJarByClass(Clustering.class);
+        job.setJarByClass(Convergence.class);
 
         // Set Mapper class
-        job.setMapperClass(ClusteringMapper.class);
+        job.setMapperClass(ConvergenceMapper.class);
 
         // Set Reducer class
-        job.setReducerClass(ClusteringReducer.class);
+        job.setReducerClass(ConvergenceReducer.class);
 
         // Set key-value output format
         job.setMapOutputKeyClass(Point.class);
-        job.setMapOutputValueClass(Point.class);
+        job.setMapOutputValueClass(DoubleWritable.class);
         job.setOutputKeyClass(NullWritable.class);
-        job.setOutputValueClass(Point.class);
+        job.setOutputValueClass(DoubleWritable.class);
 
         // Define input and output path file
         FileInputFormat.addInputPath(job, new Path(conf.get("input")));
-        FileOutputFormat.setOutputPath(job, new Path(conf.get("finalMeans")));
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("output")));
 
         // Exit
         return job.waitForCompletion(true);
