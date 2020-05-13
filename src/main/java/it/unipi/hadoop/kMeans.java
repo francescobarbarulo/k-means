@@ -1,5 +1,6 @@
 package it.unipi.hadoop;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
@@ -7,22 +8,9 @@ import org.apache.hadoop.util.GenericOptionsParser;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.util.Scanner;
 
 public class kMeans {
-
-    private static void deleteDir(File f){
-        if (f.isDirectory()){
-            File[] entries = f.listFiles();
-            if (entries != null) {
-                for (File e : entries) {
-                    e.delete();
-                }
-            }
-        }
-        f.delete();
-    }
 
     public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
         Configuration conf = new Configuration();
@@ -45,35 +33,43 @@ public class kMeans {
         conf.set("input", otherArgs[3]);
         conf.set("output", otherArgs[4]);
         conf.set("startingMeans", "starting-means");
+        conf.set("intermediateMeans", "intermediate-means");
         conf.set("finalMeans", "final-means");
 
-        double previousErr = Double.POSITIVE_INFINITY;
         double err = Double.POSITIVE_INFINITY;
 
-        deleteDir(new File(conf.get("startingMeans")));
-        deleteDir(new File(conf.get("finalMeans")));
-        deleteDir(new File(conf.get("output")));
+        FileUtils.deleteDirectory(new File(conf.get("startingMeans")));
 
         Job meansElection = Job.getInstance(conf, "means election");
         boolean meansElectionExit = MeansElection.main(meansElection);
 
-        for (int i = 0; i < 2; i++) {
-            System.out.println("\n======== NEW STEP ========\n");
+        /*
+            Now we have the sampled means in the starting-means directory
+         */
 
-            previousErr = err;
+        for (int i = 0; i < 2; i++) {
+            System.out.print("=========================\n");
+            System.out.printf("======== STEP %d ========\n", i);
+            System.out.print("=========================\n\n");
+
+            if (i == 0)
+                /* If it's the first step we take the sampled means */
+                FileUtils.copyDirectory(new File(conf.get("startingMeans")), new File(conf.get("intermediateMeans")));
+            else
+                /* In the next steps we take the new centroids computed in the previous step */
+                FileUtils.copyDirectory(new File(conf.get("finalMeans")), new File(conf.get("intermediateMeans")));
+
+            /* We can get rid of previous centroids because we are going to compute new ones */
+            FileUtils.deleteDirectory(new File(conf.get("finalMeans")));
 
             Job clustering = Job.getInstance(conf, "clustering");
-            if (i == 0)
-                clustering.addCacheFile(new Path(conf.get("startingMeans") + "/part-r-00000").toUri());
-            else
-                clustering.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
+            clustering.addCacheFile(new Path(conf.get("intermediateMeans") + "/part-r-00000").toUri());
             boolean clusteringExit = Clustering.main(clustering);
 
+            FileUtils.deleteDirectory(new File(conf.get("output")));
+
             Job convergence = Job.getInstance(conf, "convergence");
-            if (i == 0)
-                convergence.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
-            else
-                convergence.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
+            convergence.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
             boolean convergenceExit = Convergence.main(convergence);
 
             File f = new File(conf.get("output")+"/part-r-00000");
@@ -82,7 +78,7 @@ public class kMeans {
             if ( !sc.hasNextLine() ) { System.exit(1); }
 
             err = Double.parseDouble(sc.nextLine());
-            System.out.println("******ERR: " + err + "*********");
+            System.out.println("\n******ERR: " + err + "*********\n");
         }
     }
 }

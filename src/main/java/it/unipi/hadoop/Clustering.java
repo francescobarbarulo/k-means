@@ -27,13 +27,13 @@ public class Clustering {
         protected void setup(Context context) throws FileNotFoundException {
             startingMeans = new ArrayList<>();
 
-            File means = new File(context.getConfiguration().get("startingMeans")+"/part-r-00000");
+            File means = new File(context.getConfiguration().get("intermediateMeans")+"/part-r-00000");
             Scanner sc = new Scanner(means);
             while (sc.hasNextLine()){
                 startingMeans.add(Point.parse(sc.nextLine()));
             }
 
-            System.out.println("\n***STARTING MEANS***");
+            System.out.println("\n***INTERMEDIATE MEANS***");
             System.out.println(startingMeans.toString() + "\n");
         }
 
@@ -57,6 +57,10 @@ public class Clustering {
 
     public static class ClusteringReducer extends Reducer<Point, Point, NullWritable, Point> {
 
+        public void setup(Context context){
+            System.out.println("\n*** CENTROIDS ***");
+        }
+
         public void reduce(Point key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
 
@@ -72,9 +76,12 @@ public class Clustering {
             }
             centroid.div(n);
 
-            System.out.println("\n*** NEW MEAN ***");
-            System.out.println(centroid + "\n");
+            System.out.print(centroid + " ");
             context.write(null, centroid);
+        }
+
+        public void cleanup(Context context){
+            System.out.println("\n");
         }
     }
 

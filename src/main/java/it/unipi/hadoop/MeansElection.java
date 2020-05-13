@@ -20,7 +20,7 @@ public class MeansElection {
 
     public static class MeansElectionMapper extends Mapper<LongWritable, Text, IntWritable, Point> {
 
-        final static Random rand = new Random();
+        final static Random rand = new Random(0);
         final static IntWritable outputKey = new IntWritable();
         static Point outputValue;
 
