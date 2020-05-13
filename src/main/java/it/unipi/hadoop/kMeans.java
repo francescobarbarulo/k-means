@@ -47,7 +47,7 @@ public class kMeans {
             Now we have the sampled means in the starting-means directory
          */
 
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 3; i++) {
             System.out.print("=========================\n");
             System.out.printf("======== STEP %d ========\n", i);
             System.out.print("=========================\n\n");

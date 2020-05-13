@@ -58,8 +58,12 @@ public class Convergence {
 
     public static class ConvergenceReducer extends Reducer<Point, DoubleWritable, NullWritable, DoubleWritable> {
 
-        static double sum = 0.0;
+        static double sum;
         final static DoubleWritable outputValue = new DoubleWritable();
+
+        public void setup(Context context){
+            sum = 0.0;
+        }
 
         public void reduce(Point key, Iterable<DoubleWritable> values, Context context) throws IOException, InterruptedException {
             for (DoubleWritable v: values)
