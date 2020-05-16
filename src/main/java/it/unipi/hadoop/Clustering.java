@@ -88,16 +88,9 @@ public class Clustering {
     public static boolean main(Job job) throws IOException, ClassNotFoundException, InterruptedException {
         Configuration conf = job.getConfiguration();
 
-        // Set JAR class
         job.setJarByClass(Clustering.class);
-
-        // Set Mapper class
         job.setMapperClass(ClusteringMapper.class);
-
-        // Set Reducer class
         job.setReducerClass(ClusteringReducer.class);
-
-        // Set key-value output format
         job.setMapOutputKeyClass(Point.class);
         job.setMapOutputValueClass(Point.class);
         job.setOutputKeyClass(NullWritable.class);

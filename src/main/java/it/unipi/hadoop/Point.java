@@ -8,6 +8,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+/* Multiple Dimension Point custom structure */
 public class Point implements WritableComparable {
     private final ArrayPrimitiveWritable vector;
 

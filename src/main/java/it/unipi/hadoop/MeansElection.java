@@ -26,8 +26,12 @@ public class MeansElection {
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-            int N = Integer.parseInt(conf.get("n"));
+            final int N = Integer.parseInt(conf.get("n"));
 
+            /*
+                key     = a random value between 0 and N (total number of points)
+                value   = the point
+            */
             outputKey.set(rand.nextInt(N));
             outputValue = Point.parse(value.toString());
             context.write(outputKey, outputValue);
@@ -44,12 +48,14 @@ public class MeansElection {
 
         public void reduce(IntWritable key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-            int K = Integer.parseInt(conf.get("k"));
+            final int K = Integer.parseInt(conf.get("k"));
 
             for (Point p: values){
                 if (meansCount < K){
                     context.write(null, p);
                     meansCount++;
+                } else {
+                    return;
                 }
             }
         }

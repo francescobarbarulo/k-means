@@ -21,9 +21,9 @@ public class kMeans {
             System.exit(1);
         }
 
-        System.out.println("n=" + otherArgs[0]);
-        System.out.println("d=" + otherArgs[1]);
-        System.out.println("k=" + otherArgs[2]);
+        System.out.println("n=" + otherArgs[0]);        // number of points
+        System.out.println("d=" + otherArgs[1]);        // point space dimensions
+        System.out.println("k=" + otherArgs[2]);        // number of means
         System.out.println("input=" + otherArgs[3]);
         System.out.println("output=" + otherArgs[4]);
 
@@ -40,24 +40,25 @@ public class kMeans {
 
         FileUtils.deleteDirectory(new File(conf.get("startingMeans")));
 
+        /* Means election -- first map and reduce */
         Job meansElection = Job.getInstance(conf, "means election");
         boolean meansElectionExit = MeansElection.main(meansElection);
 
         /*
             Now we have the sampled means in the starting-means directory
-         */
-
+        */
         for (int i = 0; i < 3; i++) {
             System.out.print("=========================\n");
             System.out.printf("======== STEP %d ========\n", i);
             System.out.print("=========================\n\n");
 
-            if (i == 0)
+            if (i == 0) {
                 /* If it's the first step we take the sampled means */
                 FileUtils.copyDirectory(new File(conf.get("startingMeans")), new File(conf.get("intermediateMeans")));
-            else
+            } else {
                 /* In the next steps we take the new centroids computed in the previous step */
                 FileUtils.copyDirectory(new File(conf.get("finalMeans")), new File(conf.get("intermediateMeans")));
+            }
 
             /* We can get rid of previous centroids because we are going to compute new ones */
             FileUtils.deleteDirectory(new File(conf.get("finalMeans")));
