@@ -13,50 +13,71 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import java.io.IOException;
+import java.util.PriorityQueue;
 import java.util.Random;
 
 
-public class MeansElection {
+public class Sampling {
 
-    public static class MeansElectionMapper extends Mapper<LongWritable, Text, IntWritable, Point> {
+    public static class SamplingMapper extends Mapper<LongWritable, Text, IntWritable, Point> {
+        /*
+            N : total number of points
+            K : number of clusters
+         */
+        static int N, K;
 
         final static Random rand = new Random(0);
         final static IntWritable outputKey = new IntWritable();
-        static Point outputValue;
 
-        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        /* In-Mapper Combiner: emit at most K points stored in the PriorityQueue */
+        static PriorityQueue<Entry> pq = new PriorityQueue<>();
+
+        public void setup(Context context){
             Configuration conf = context.getConfiguration();
-            final int N = Integer.parseInt(conf.get("n"));
+            N = Integer.parseInt(conf.get("n"));
+            K = Integer.parseInt(conf.get("k"));
+        }
 
+        public void map(LongWritable key, Text value, Context context) {
+            Entry e = new Entry(rand.nextInt(N), Point.parse(value.toString()));
+            pq.add(e);
+
+            /* Keep the queue size up to K */
+            if (pq.size() > K)
+                pq.poll();
+        }
+
+        public void cleanup(Context context) throws IOException, InterruptedException {
             /*
-                key     = a random value between 0 and N (total number of points)
-                value   = the point
+                key   : a random value between 0 and N (total number of points)
+                value : the point
             */
-            outputKey.set(rand.nextInt(N));
-            outputValue = Point.parse(value.toString());
-            context.write(outputKey, outputValue);
+            for (Entry e: pq){
+                outputKey.set(e.getPriority());
+                context.write(outputKey, e.getPoint());
+            }
         }
     }
 
-    public static class MeansElectionReducer extends Reducer<IntWritable, Point, NullWritable, Point>{
+    public static class SamplingReducer extends Reducer<IntWritable, Point, NullWritable, Point>{
 
+        static int K;
         static int meansCount;
 
         public void setup(Context context){
+            Configuration conf = context.getConfiguration();
+            K = Integer.parseInt(conf.get("k"));
+
             meansCount = 0;
         }
 
         public void reduce(IntWritable key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
-            Configuration conf = context.getConfiguration();
-            final int K = Integer.parseInt(conf.get("k"));
-
             for (Point p: values){
-                if (meansCount < K){
-                    context.write(null, p);
-                    meansCount++;
-                } else {
+                if (meansCount > K)
                     return;
-                }
+
+                context.write(null, p);
+                meansCount++;
             }
         }
     }
@@ -65,17 +86,13 @@ public class MeansElection {
         Configuration conf = job.getConfiguration();
 
         // Set JAR class
-        job.setJarByClass(MeansElection.class);
+        job.setJarByClass(Sampling.class);
 
         // Set Mapper class
-        job.setMapperClass(MeansElectionMapper.class);
-
-        // Set Combiner class
-        // TODO -- if we want to emit null key we need to define a new Combiner
-        //job.setCombinerClass(MeansElectionReducer.class);
+        job.setMapperClass(SamplingMapper.class);
 
         // Set Reducer class
-        job.setReducerClass(MeansElectionReducer.class);
+        job.setReducerClass(SamplingReducer.class);
 
         // Set key-value output format
         job.setMapOutputKeyClass(IntWritable.class);
