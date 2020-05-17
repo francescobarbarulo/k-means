@@ -36,23 +36,23 @@ public class kMeans {
         conf.set("intermediateMeans", "intermediate-means");
         conf.set("finalMeans", "final-means");
 
-        double err = Double.POSITIVE_INFINITY;
-
         FileUtils.deleteDirectory(new File(conf.get("startingMeans")));
 
-        /* Means election -- first map and reduce */
-        Job meansElection = Job.getInstance(conf, "means election");
-        boolean meansElectionExit = MeansElection.main(meansElection);
+        /* Sampling means -- first map and reduce */
+        Job sampling = Job.getInstance(conf, "sampling means");
+        Sampling.main(sampling);
 
         /*
             Now we have the sampled means in the starting-means directory
         */
-        for (int i = 0; i < 3; i++) {
-            System.out.print("=========================\n");
-            System.out.printf("======== STEP %d ========\n", i);
-            System.out.print("=========================\n\n");
 
-            if (i == 0) {
+        int step = 0;
+        double err = Double.POSITIVE_INFINITY;
+        double prev_err;
+
+        do {
+            prev_err = err;
+            if (step == 0) {
                 /* If it's the first step we take the sampled means */
                 FileUtils.copyDirectory(new File(conf.get("startingMeans")), new File(conf.get("intermediateMeans")));
             } else {
@@ -79,7 +79,9 @@ public class kMeans {
             if ( !sc.hasNextLine() ) { System.exit(1); }
 
             err = Double.parseDouble(sc.nextLine());
-            System.out.println("\n******ERR: " + err + "*********\n");
-        }
+            System.out.printf("\nSTEP: %d - PREV: %f - ERR: %f - CHANGE: %.2f%%\n\n", step, prev_err, err, (prev_err - err)/prev_err * 100);
+
+            step++;
+        } while (prev_err == Double.POSITIVE_INFINITY || (prev_err - err)/prev_err > 0.01);
     }
 }
