@@ -18,11 +18,10 @@ if __name__ == "__main__":
 
     sc = SparkContext(master, "KMeans")
 
-    textfile = sc.textFile(CONF_INPUT_FILE)
-    m = textfile.map(lambda x: ( ( int(random.uniform(0, CONF_N)), [ np.fromstring(x, dtype=float, sep=',') ] )))
+    m = sc.textFile(CONF_INPUT_FILE) \
+        .map(lambda x: ( ( int(random.uniform(0, CONF_N)), [ np.fromstring(x, dtype=float, sep=',') ] ))) \
+        .reduceByKey(lambda x, y: x + y)
 
-    n = m.reduceByKey(lambda x, y: x + y)
-
-    pp(n.collect())
-    pp(n.count())
+    pp(m.collect())
+    pp(m.count())
 
