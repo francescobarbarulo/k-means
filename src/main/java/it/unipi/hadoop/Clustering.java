@@ -3,6 +3,7 @@ package it.unipi.hadoop;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -19,22 +20,21 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Clustering {
-    public static class ClusterAggregatorMapper extends Mapper<LongWritable, Text, Point, Point> {
+    public static class ClusteringMapper extends Mapper<LongWritable, Text, Point, Point> {
 
         static List<Point> startingMeans;
 
         protected void setup(Context context) throws FileNotFoundException {
             startingMeans = new ArrayList<>();
 
-            File means = new File("part-r-00000");
+            File means = new File(context.getConfiguration().get("intermediateMeans")+"/part-r-00000");
             Scanner sc = new Scanner(means);
             while (sc.hasNextLine()){
-                String line = sc.nextLine();
-                String[] pointStr = line.split("\t");
-                startingMeans.add(Point.parse(pointStr[1]));
+                startingMeans.add(Point.parse(sc.nextLine()));
             }
 
-            System.out.println(startingMeans.toString());
+            System.out.println("\n***INTERMEDIATE MEANS***");
+            System.out.println(startingMeans.toString() + "\n");
         }
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
@@ -55,7 +55,11 @@ public class Clustering {
         }
     }
 
-    public static class ClusterAggregatorReducer extends Reducer<Point, Point, Point, Point> {
+    public static class ClusteringReducer extends Reducer<Point, Point, NullWritable, Point> {
+
+        public void setup(Context context){
+            System.out.println("\n*** CENTROIDS ***");
+        }
 
         public void reduce(Point key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
@@ -72,29 +76,29 @@ public class Clustering {
             }
             centroid.div(n);
 
-            context.write(key, centroid);
+            System.out.print(centroid + " ");
+            context.write(null, centroid);
+        }
+
+        public void cleanup(Context context){
+            System.out.println("\n");
         }
     }
 
     public static boolean main(Job job) throws IOException, ClassNotFoundException, InterruptedException {
         Configuration conf = job.getConfiguration();
 
-        // Set JAR class
         job.setJarByClass(Clustering.class);
-
-        // Set Mapper class
-        job.setMapperClass(ClusterAggregatorMapper.class);
-
-        // Set Reducer class
-        job.setReducerClass(ClusterAggregatorReducer.class);
-
-        // Set key-value output format
-        job.setOutputKeyClass(Point.class);
+        job.setMapperClass(ClusteringMapper.class);
+        job.setReducerClass(ClusteringReducer.class);
+        job.setMapOutputKeyClass(Point.class);
+        job.setMapOutputValueClass(Point.class);
+        job.setOutputKeyClass(NullWritable.class);
         job.setOutputValueClass(Point.class);
 
         // Define input and output path file
         FileInputFormat.addInputPath(job, new Path(conf.get("input")));
-        FileOutputFormat.setOutputPath(job, new Path(conf.get("output")));
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("finalMeans")));
 
         // Exit
         return job.waitForCompletion(true);

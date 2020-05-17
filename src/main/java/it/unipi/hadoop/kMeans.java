@@ -1,14 +1,17 @@
 package it.unipi.hadoop;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Scanner;
 
 public class kMeans {
+
     public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
         Configuration conf = new Configuration();
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
@@ -18,9 +21,9 @@ public class kMeans {
             System.exit(1);
         }
 
-        System.out.println("n=" + otherArgs[0]);
-        System.out.println("d=" + otherArgs[1]);
-        System.out.println("k=" + otherArgs[2]);
+        System.out.println("n=" + otherArgs[0]);        // number of points
+        System.out.println("d=" + otherArgs[1]);        // point space dimensions
+        System.out.println("k=" + otherArgs[2]);        // number of means
         System.out.println("input=" + otherArgs[3]);
         System.out.println("output=" + otherArgs[4]);
 
@@ -29,16 +32,54 @@ public class kMeans {
         conf.set("k", otherArgs[2]);
         conf.set("input", otherArgs[3]);
         conf.set("output", otherArgs[4]);
-        conf.set("intermediateOutput", "starting-means/");
+        conf.set("startingMeans", "starting-means");
+        conf.set("intermediateMeans", "intermediate-means");
+        conf.set("finalMeans", "final-means");
 
+        double err = Double.POSITIVE_INFINITY;
+
+        FileUtils.deleteDirectory(new File(conf.get("startingMeans")));
+
+        /* Means election -- first map and reduce */
         Job meansElection = Job.getInstance(conf, "means election");
         boolean meansElectionExit = MeansElection.main(meansElection);
 
-        DistributedCache.addCacheFile(new Path(conf.get("intermediateOutput")+"part-r-00000").toUri(), conf);
+        /*
+            Now we have the sampled means in the starting-means directory
+        */
+        for (int i = 0; i < 3; i++) {
+            System.out.print("=========================\n");
+            System.out.printf("======== STEP %d ========\n", i);
+            System.out.print("=========================\n\n");
 
-        Job clustering = Job.getInstance(conf, "clustering");
-        boolean clusteringExit = Clustering.main(clustering);
+            if (i == 0) {
+                /* If it's the first step we take the sampled means */
+                FileUtils.copyDirectory(new File(conf.get("startingMeans")), new File(conf.get("intermediateMeans")));
+            } else {
+                /* In the next steps we take the new centroids computed in the previous step */
+                FileUtils.copyDirectory(new File(conf.get("finalMeans")), new File(conf.get("intermediateMeans")));
+            }
 
-        System.exit((meansElectionExit && clusteringExit) ? 0 : 1);
+            /* We can get rid of previous centroids because we are going to compute new ones */
+            FileUtils.deleteDirectory(new File(conf.get("finalMeans")));
+
+            Job clustering = Job.getInstance(conf, "clustering");
+            clustering.addCacheFile(new Path(conf.get("intermediateMeans") + "/part-r-00000").toUri());
+            boolean clusteringExit = Clustering.main(clustering);
+
+            FileUtils.deleteDirectory(new File(conf.get("output")));
+
+            Job convergence = Job.getInstance(conf, "convergence");
+            convergence.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
+            boolean convergenceExit = Convergence.main(convergence);
+
+            File f = new File(conf.get("output")+"/part-r-00000");
+            Scanner sc = new Scanner(f);
+
+            if ( !sc.hasNextLine() ) { System.exit(1); }
+
+            err = Double.parseDouble(sc.nextLine());
+            System.out.println("\n******ERR: " + err + "*********\n");
+        }
     }
 }
