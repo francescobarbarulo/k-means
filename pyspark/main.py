@@ -18,9 +18,12 @@ if __name__ == "__main__":
 
     sc = SparkContext(master, "KMeans")
 
+    random.seed(42)
+
     m = sc.textFile(CONF_INPUT_FILE) \
         .map(lambda x: ( ( int(random.uniform(0, CONF_N)), [ np.fromstring(x, dtype=float, sep=',') ] ))) \
-        .reduceByKey(lambda x, y: x + y)
+        .reduceByKey(lambda x, y: x + y) \
+        .sortByKey()
 
     pp(m.collect())
     pp(m.count())
