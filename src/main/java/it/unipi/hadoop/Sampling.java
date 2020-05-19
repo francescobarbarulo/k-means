@@ -53,7 +53,7 @@ public class Sampling {
                 value : the point
             */
             for (Entry e: pq){
-                outputKey.set(e.getPriority());
+                outputKey.set(e.getValue());
                 context.write(outputKey, e.getPoint());
             }
         }
@@ -97,12 +97,13 @@ public class Sampling {
         // Set key-value output format
         job.setMapOutputKeyClass(IntWritable.class);
         job.setMapOutputValueClass(Point.class);
+
         job.setOutputKeyClass(NullWritable.class);
         job.setOutputValueClass(Point.class);
 
         // Define input and output path file
         FileInputFormat.addInputPath(job, new Path(conf.get("input")));
-        FileOutputFormat.setOutputPath(job, new Path(conf.get("startingMeans")));
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("sampledMeans")));
 
         // Exit
         return job.waitForCompletion(true);

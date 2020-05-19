@@ -1,19 +1,27 @@
 package it.unipi.hadoop;
 
 import org.apache.hadoop.io.ArrayPrimitiveWritable;
-import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Arrays;
 
 /* Multiple Dimension Point custom structure */
-public class Point implements WritableComparable {
+public class Point implements WritableComparable<Point> {
     private final ArrayPrimitiveWritable vector;
 
     public Point(){
         this.vector = new ArrayPrimitiveWritable();
+    }
+
+    public Point(final int d){
+        this();
+
+        double[] vector = new double[d];
+        Arrays.fill(vector, 0.0);
+        this.vector.set(vector);
     }
 
     public Point(final double[] vector){
@@ -82,9 +90,9 @@ public class Point implements WritableComparable {
     }
 
     @Override
-    public int compareTo(Object o) {
+    public int compareTo(Point that) {
         double[] thisVector = (double[]) this.vector.get();
-        double[] thatVector = (double[]) ((Point) o).vector.get();
+        double[] thatVector = (double[]) that.vector.get();
 
         for (int i = 0; i < thisVector.length; i++){
             if (thisVector[i] < thatVector[i])

@@ -1,6 +1,8 @@
 package it.unipi.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -12,47 +14,54 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Scanner;
+import java.io.*;
+import java.net.URI;
+import java.util.*;
 
 public class Convergence {
     public static class ConvergenceMapper extends Mapper<LongWritable, Text, Point, DoubleWritable> {
 
-        static List<Point> finalMeans;
+        Map<Point, Double> distance;
         final static DoubleWritable outputValue = new DoubleWritable();
 
-        protected void setup(Context context) throws FileNotFoundException {
-            finalMeans = new ArrayList<>();
+        protected void setup(Context context) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            distance = new HashMap<>();
 
-            File means = new File(context.getConfiguration().get("finalMeans")+"/part-r-00000");
-            Scanner sc = new Scanner(means);
-            while (sc.hasNextLine()){
-                finalMeans.add(Point.parse(sc.nextLine()));
+            FileSystem hdfs = FileSystem.get(URI.create("hdfs://" + conf.get("host")), conf, conf.get("user"));
+            FSDataInputStream fdsis = hdfs.open(new Path(conf.get("output") + "/part-r-00000"));
+            BufferedReader br = new BufferedReader(new InputStreamReader(fdsis));
+
+            String line;
+            while ((line = br.readLine()) != null){
+                Point mean = Point.parse(line);
+                distance.put(mean, 0.0);
             }
-
-            System.out.println("\n***FINAL MEANS***");
-            System.out.println(finalMeans.toString() + "\n");
         }
 
-        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        public void map(LongWritable key, Text value, Context context) {
             double minDistance = Double.POSITIVE_INFINITY;
+            Point closestMean = null;
 
             Point p = Point.parse(value.toString());
 
-            for (Point m: finalMeans){
+            for (Point m: distance.keySet()){
                 double d = p.getDistance(m);
                 if (d < minDistance){
                     minDistance = d;
+                    closestMean = m;
                 }
             }
 
-            outputValue.set(minDistance);
-            context.write(p, outputValue);
+            double currentDistance = distance.get(closestMean);
+            distance.put(closestMean, currentDistance + minDistance);
+        }
+
+        public void cleanup(Context context) throws IOException, InterruptedException {
+            for (Map.Entry<Point, Double> entry: distance.entrySet()){
+                outputValue.set(entry.getValue());
+                context.write(entry.getKey(), outputValue);
+            }
         }
     }
 
@@ -66,8 +75,8 @@ public class Convergence {
         }
 
         public void reduce(Point key, Iterable<DoubleWritable> values, Context context) throws IOException, InterruptedException {
-            for (DoubleWritable v: values)
-                sum += v.get();
+            for (DoubleWritable value: values)
+                sum += value.get();
         }
 
         public void cleanup(Context context) throws IOException, InterruptedException {
@@ -96,7 +105,7 @@ public class Convergence {
 
         // Define input and output path file
         FileInputFormat.addInputPath(job, new Path(conf.get("input")));
-        FileOutputFormat.setOutputPath(job, new Path(conf.get("output")));
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("error")));
 
         // Exit
         return job.waitForCompletion(true);

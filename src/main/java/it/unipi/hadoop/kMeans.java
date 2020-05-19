@@ -1,14 +1,17 @@
 package it.unipi.hadoop;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-import java.io.File;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.Scanner;
+import java.io.InputStreamReader;
+import java.net.URI;
 
 public class kMeans {
 
@@ -21,30 +24,41 @@ public class kMeans {
             System.exit(1);
         }
 
-        System.out.println("n=" + otherArgs[0]);        // number of points
-        System.out.println("d=" + otherArgs[1]);        // point space dimensions
-        System.out.println("k=" + otherArgs[2]);        // number of means
+        System.out.println("n=" + otherArgs[0]);
+        System.out.println("d=" + otherArgs[1]);
+        System.out.println("k=" + otherArgs[2]);
         System.out.println("input=" + otherArgs[3]);
         System.out.println("output=" + otherArgs[4]);
 
-        conf.set("n", otherArgs[0]);
-        conf.set("d", otherArgs[1]);
-        conf.set("k", otherArgs[2]);
-        conf.set("input", otherArgs[3]);
-        conf.set("output", otherArgs[4]);
-        conf.set("startingMeans", "starting-means");
-        conf.set("intermediateMeans", "intermediate-means");
-        conf.set("finalMeans", "final-means");
+        conf.set("n", otherArgs[0]);                    // number of points
+        conf.set("d", otherArgs[1]);                    // point space dimensions
+        conf.set("k", otherArgs[2]);                    // number of means
+        conf.set("input", otherArgs[3]);                // points
+        conf.set("output", otherArgs[4]);               // centroids
+        conf.set("sampledMeans", "sampled");            // sampled means
+        conf.set("intermediateMeans", "tmp");           // tmp folder
+        conf.set("error", "error");                     // convergence error
+        conf.set("host", "falken-namenode:9820");
+        conf.set("user", "hadoop");
 
-        FileUtils.deleteDirectory(new File(conf.get("startingMeans")));
+        /* For local debugging */
+        // conf.set("host", "localhost:9000");
+        // conf.set("user", "Francesco");
 
-        /* Sampling means -- first map and reduce */
+        FileSystem hdfs = FileSystem.get(URI.create("hdfs://" + conf.get("host")), conf, conf.get("user"));
+
+        /*  (*
+            # Sampling
+            - input : points
+            - output: k sampled points
+         */
+
+        hdfs.delete(new Path(conf.get("sampledMeans")), true);
+
         Job sampling = Job.getInstance(conf, "sampling means");
-        Sampling.main(sampling);
+        if ( !Sampling.main(sampling) ) System.exit(1);
 
-        /*
-            Now we have the sampled means in the starting-means directory
-        */
+        /* *) */
 
         int step = 0;
         double err = Double.POSITIVE_INFINITY;
@@ -52,36 +66,52 @@ public class kMeans {
 
         do {
             prev_err = err;
-            if (step == 0) {
-                /* If it's the first step we take the sampled means */
-                FileUtils.copyDirectory(new File(conf.get("startingMeans")), new File(conf.get("intermediateMeans")));
-            } else {
-                /* In the next steps we take the new centroids computed in the previous step */
-                FileUtils.copyDirectory(new File(conf.get("finalMeans")), new File(conf.get("intermediateMeans")));
-            }
 
+            Path srcPath = (step == 0) ? new Path(conf.get("sampledMeans") + "/part-r-00000") : new Path(conf.get("output") + "/part-r-00000");
+            Path dstPath =  new Path(conf.get("intermediateMeans") + "/part-r-00000");
+            FileUtil.copy(hdfs, srcPath, hdfs, dstPath, false, true, conf);
+
+            /*
+                (*
+                # Clustering
+                - input : points + intermediate means (hdfs)
+                - output: new centroids
+            */
             /* We can get rid of previous centroids because we are going to compute new ones */
-            FileUtils.deleteDirectory(new File(conf.get("finalMeans")));
+            hdfs.delete(new Path(conf.get("output")), true);
 
             Job clustering = Job.getInstance(conf, "clustering");
-            clustering.addCacheFile(new Path(conf.get("intermediateMeans") + "/part-r-00000").toUri());
-            boolean clusteringExit = Clustering.main(clustering);
+            if ( !Clustering.main(clustering) ) System.exit(1);
 
-            FileUtils.deleteDirectory(new File(conf.get("output")));
+            /* *) */
+
+            /*  (*
+                # Convergence:
+                - input : points + actual centroids (hdfs)
+                - output: convergence error
+             */
+            /* We can get rid of previous centroids because we are going to compute new ones */
+            hdfs.delete(new Path(conf.get("error")), true);
 
             Job convergence = Job.getInstance(conf, "convergence");
-            convergence.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
-            boolean convergenceExit = Convergence.main(convergence);
+            if ( !Convergence.main(convergence) ) System.exit(1);
 
-            File f = new File(conf.get("output")+"/part-r-00000");
-            Scanner sc = new Scanner(f);
+            /* *) */
 
-            if ( !sc.hasNextLine() ) { System.exit(1); }
+            /* (*  Read the convergence error  */
 
-            err = Double.parseDouble(sc.nextLine());
-            System.out.printf("\nSTEP: %d - PREV: %f - ERR: %f - CHANGE: %.2f%%\n\n", step, prev_err, err, (prev_err - err)/prev_err * 100);
+            FSDataInputStream fdsis = hdfs.open(new Path(conf.get("error") + "/part-r-00000"));
+            BufferedReader br = new BufferedReader(new InputStreamReader(fdsis));
+
+            String line;
+            if ((line = br.readLine()) == null ) { System.exit(1); }
+
+            err = Double.parseDouble(line);
+            System.out.printf("\nSTEP: %d - PREV_ERR: %f - ERR: %f - CHANGE: %.2f%%\n\n", step, prev_err, err, (prev_err - err)/prev_err * 100);
+
+            /* *) */
 
             step++;
-        } while (prev_err == Double.POSITIVE_INFINITY || (prev_err - err)/prev_err > 0.01);
+        } while (prev_err == Double.POSITIVE_INFINITY || (prev_err - err)/prev_err > 0.01); // error changing in 1%
     }
 }
