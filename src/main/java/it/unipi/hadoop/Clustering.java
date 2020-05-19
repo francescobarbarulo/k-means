@@ -37,7 +37,7 @@ public class Clustering {
             String line;
             while ((line = br.readLine()) != null){
                 Point mean = Point.parse(line);
-                centroidSummation.put(mean, new Entry(D));
+                centroidSummation.put(mean, new Entry(new Point(D)));
             }
         }
 

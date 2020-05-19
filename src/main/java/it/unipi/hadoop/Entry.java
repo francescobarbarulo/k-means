@@ -16,13 +16,13 @@ public class Entry implements WritableComparable<Entry> {
     private int value;
     private Point point;
 
-    public Entry(){
+    private Entry(){
         this.point = new Point();
     }
 
-    public Entry(int d){
+    public Entry(Point point){
         this.value = 0;
-        this.point = new Point(d);
+        this.point = point;
     }
 
     public Entry(int value, Point point){
