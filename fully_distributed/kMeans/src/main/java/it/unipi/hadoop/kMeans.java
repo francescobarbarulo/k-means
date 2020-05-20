@@ -13,11 +13,11 @@ import java.util.Scanner;
 public class kMeans {
     
     private static void setupConfiguration(LocalConfiguration localConfig, Configuration conf) {
-        // File system manipulation
+        // File system manipulation.
         conf.set("fs.hdfs.impl",org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
         conf.set("fs.file.impl",org.apache.hadoop.fs.LocalFileSystem.class.getName());
 
-        // Parameters
+        // Parameters.
         conf.set("numberOfPoints", localConfig.getNumberOfPoints());
         conf.set("numberOfDimensions", localConfig.getNumberOfDimensions());
         conf.set("numberOfClusters", localConfig.getNumberOfClusters());
@@ -26,13 +26,14 @@ public class kMeans {
         conf.set("seedRNG", localConfig.getSeedRNG());
         conf.set("clusteringNumberOfReduceTasks", localConfig.getClusteringNumberOfReduceTasks());
         
-        // Directories
+        // Directories.
         conf.set("meansElection", "means-election");
         conf.set("clusteringClosestPoints", "clustering-closest-points");
-        conf.set("clusteringNewMeans", "clustering-new-means");
         
-        //conf.set("intermediateMeans", "intermediate-means");
-        //conf.set("finalMeans", "final-means");
+        conf.set("clusteringNewMeans", "clustering-new-means");
+        conf.set("clusteringNewMeans_NewMeans", "new-means"); // Sub-directory of clusteringNewMeans.
+        conf.set("clusteringNewMeans_MaximumDistanceBetweenMeans", "maximum-distance-between-means"); // Sub-directory of clusteringNewMeans.
+                
     }
     
     private static void cleanWorkingDirectories(FileSystem hdfs, Configuration conf) throws IOException {

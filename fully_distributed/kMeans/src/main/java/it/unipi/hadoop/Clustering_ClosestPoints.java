@@ -80,7 +80,7 @@ class Clustering_ClosestPoints {
                 dataPoint.set(values.iterator().next().copy());
                 if (!dataPoint.isData()) {
                     // No data point was parsed by the mapper: simply propagate all the received points.
-                    // dataPoint is a mean point.
+                    // "dataPoint" is a mean point, in this case.
                     context.write(key, dataPoint); 
                     
                     for (Point p : values)
@@ -96,7 +96,7 @@ class Clustering_ClosestPoints {
                 if (p.isData())
                     throw new IllegalArgumentException("Error: secondary sort pattern is not working.");
                 
-                double distance = dataPoint.getDistance(p);
+                double distance = (dataPoint.getDistance(p))*(dataPoint.getDistance(p));
                 if (distance < minimumDistance) {
                     minimumDistance = distance;
                     closestMean.set(p.copy());
@@ -134,7 +134,7 @@ class Clustering_ClosestPoints {
                 if (p.isData())
                     throw new IllegalArgumentException("Error: secondary sort pattern is not working.");
 
-                double distance = dataPoint.getDistance(p);
+                double distance = dataPoint.getDistance(p)*dataPoint.getDistance(p);
                 if (distance < minimumDistance) {
                     minimumDistance = distance;
                     closestMean.set(p.copy());
@@ -182,7 +182,7 @@ class Clustering_ClosestPoints {
         CombineTextInputFormat.addInputPath(job, new Path(conf.get("meansElection")));
         FileOutputFormat.setOutputPath(job, new Path(conf.get("clusteringClosestPoints")));
 
-        // Exit
+        // Exit.
         return job.waitForCompletion(true);
     }  
 }

@@ -107,7 +107,7 @@ public class MeansElection {
         FileInputFormat.addInputPath(job, new Path(conf.get("inputPath")));
         FileOutputFormat.setOutputPath(job, new Path(conf.get("meansElection")));
 
-        // Exit
+        // Exit.
         return job.waitForCompletion(true);
     }  
 }
