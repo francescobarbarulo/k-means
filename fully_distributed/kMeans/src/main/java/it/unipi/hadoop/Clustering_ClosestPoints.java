@@ -56,6 +56,7 @@ class Clustering_ClosestPoints {
                 outputKey.set(outputValue.getId().get(), PointType.DATA);
                 context.write(outputKey, outputValue);
             } else if (outputValue.isMean()) {
+                // Id of the points must go from 1 to numberOfPoints.
                 for (long i = 1; i <= numberOfPoints; i++) {
                     outputKey.set(i, PointType.MEAN);
                     context.write(outputKey, outputValue);

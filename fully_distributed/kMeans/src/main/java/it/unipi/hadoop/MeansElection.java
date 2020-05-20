@@ -38,7 +38,7 @@ public class MeansElection {
     }
 
     public static class MeansElectionCombiner extends Reducer<IntWritable, Point, IntWritable, Point> {
-        static int meansCount;
+        private static int meansCount;
 
         public void setup(Context context){
             meansCount = 0;
@@ -59,7 +59,8 @@ public class MeansElection {
     }
     
     public static class MeansElectionReducer extends Reducer<IntWritable, Point, NullWritable, Point>{
-        static int meansCount;
+        private static int meansCount;
+        private static final Point chosenMean = new Point();
 
         public void setup(Context context){
             meansCount = 0;
@@ -71,8 +72,9 @@ public class MeansElection {
             
             for (Point candidateMean : values){
                 if (meansCount < numberOfClusters){
-                    candidateMean.changeTypeToMean();
-                    context.write(null, candidateMean);
+                    // Id of the means must go from 1 to numberOfClusters.
+                    chosenMean.set((double[]) candidateMean.getCoordinates().get(), PointType.MEAN, meansCount + 1);
+                    context.write(null, chosenMean);
                     meansCount++;
                 } else 
                     return;  

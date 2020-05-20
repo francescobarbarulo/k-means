@@ -29,12 +29,7 @@ public class Point implements WritableComparable {
     public void set(final double[] coordinates, PointType type, long id) {
         this.coordinates.set(coordinates);
         this.type = type;
-        
-        if (this.type == PointType.DATA) {
-            this.id.set(id);
-        } else {
-            this.id.set(-1);
-        }
+        this.id.set(id);
     }
     
     public void set(Point p) {
@@ -88,14 +83,6 @@ public class Point implements WritableComparable {
     public boolean isData() {
         return this.type == PointType.DATA;
     }
-    
-    public void changeTypeToData() {
-        this.type = PointType.DATA;
-    }
-    
-    public void changeTypeToMean() {
-        this.type = PointType.MEAN;
-    }
 
     public Point copy() {
         return new Point((double[]) this.coordinates.get(), this.type, this.id.get());
@@ -123,12 +110,7 @@ public class Point implements WritableComparable {
         for (int i = 0; i < coordinatesString.length; i++)
             coordinatesString[i] = Double.toString(coordinatesDouble[i]);
         
-        if (this.type == PointType.DATA) {
-            return this.type.toString() + "," + this.id.get() + "," + String.join(",", coordinatesString);
-        }
-        
-        return this.type.toString() + "," + String.join(",", coordinatesString);
-        
+        return this.type.toString() + "," + this.id.get() + "," + String.join(",", coordinatesString);        
     }
 
     @Override
@@ -171,22 +153,13 @@ public class Point implements WritableComparable {
         String[] valueElements = value.split(",");
         
         PointType parsedType = PointType.valueOf(valueElements[0]);
-        long parsedId;
-        int coordinatesStartingIndex;
+        long parsedId = Long.valueOf(valueElements[1]);  
+        double[] parsedCoordinates = new double[valueElements.length - 2];
         
-        if (parsedType == PointType.DATA) {
-            parsedId = Long.valueOf(valueElements[1]);
-            coordinatesStartingIndex = 2;
-        } else {
-            parsedId = -1;
-            coordinatesStartingIndex = 1;
+        for (int i = 2; i < valueElements.length; i++) {
+            parsedCoordinates[i - 2] = Double.parseDouble(valueElements[i]);
         }
         
-        double[] parsedCoordinates = new double[valueElements.length - coordinatesStartingIndex];
-        for (int i = coordinatesStartingIndex; i < valueElements.length; i++) {
-            parsedCoordinates[i - coordinatesStartingIndex] = Double.parseDouble(valueElements[i]);
-        }
-
         return new Point(parsedCoordinates, parsedType, parsedId);
     }
 }

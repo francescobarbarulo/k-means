@@ -40,8 +40,8 @@ public class Clustering_NewMeans {
             Configuration conf = context.getConfiguration();
             
             // Initial point with coordinates equal to 0.
-            // Id is not considered for a mean point (by default is -1).
-            partialSum.set(new double[Integer.parseInt(conf.get("numberOfDimensions"))], PointType.MEAN, -1);
+            // Id is the same of the relative mean point.
+            partialSum.set(new double[Integer.parseInt(conf.get("numberOfDimensions"))], PointType.MEAN, key.getId().get());
             long numberOfPoints = 0;
             
             for(PartialNewMean partialMean : values) {
@@ -54,15 +54,15 @@ public class Clustering_NewMeans {
         }
     }
     
-    public static class Clustering_NewMeansReducer extends Reducer<Point, PartialNewMean, NullWritable, Point> {
+    public static class Clustering_NewMeansReducer extends Reducer<Point, PartialNewMean, Point, Point> {
         private static final Point newMean = new Point();
         
         public void reduce(Point key, Iterable<PartialNewMean> values, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
             
             // Initial point with coordinates equal to 0.
-            // Id is not considered for a mean point (by default is -1).
-            newMean.set(new double[Integer.parseInt(conf.get("numberOfDimensions"))], PointType.MEAN, -1);
+            // Id is the same of the relative mean point.
+            newMean.set(new double[Integer.parseInt(conf.get("numberOfDimensions"))], PointType.MEAN, key.getId().get());
             long numberOfPoints = 0;
             
             for(PartialNewMean partialMean : values) {
@@ -71,7 +71,9 @@ public class Clustering_NewMeans {
             }
             
             newMean.div(numberOfPoints);
-            context.write(null, newMean);
+            
+            // Emit the old mean and its updated version.
+            context.write(key, newMean);
         }
     }
     
@@ -94,7 +96,7 @@ public class Clustering_NewMeans {
         // Set key-value output format.
         job.setMapOutputKeyClass(Point.class);
         job.setMapOutputValueClass(PartialNewMean.class);
-        job.setOutputKeyClass(NullWritable.class);
+        job.setOutputKeyClass(Point.class);
         job.setOutputValueClass(Point.class);
         
         // Define input and output path file. 
