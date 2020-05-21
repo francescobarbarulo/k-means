@@ -68,6 +68,7 @@ public class Convergence {
 
         // Set Reducer class. It must be a single reducer.
         job.setReducerClass(ConvergenceReducer.class);
+        job.setNumReduceTasks(1);
         
         // Set key-value output format.
         job.setMapOutputKeyClass(IntWritable.class);

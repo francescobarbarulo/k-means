@@ -96,6 +96,7 @@ public class MeansElection {
 
         // Set Reducer class. It must be a single reducer.
         job.setReducerClass(MeansElectionReducer.class);
+        job.setNumReduceTasks(1);
 
         // Set key-value output format.
         job.setMapOutputKeyClass(IntWritable.class);
