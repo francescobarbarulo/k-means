@@ -1,13 +1,14 @@
 package it.unipi.hadoop;
 
+import java.io.BufferedReader;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Job;
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
-import java.util.Scanner;
+import org.apache.hadoop.fs.FSDataInputStream;
 
 
 public class kMeans {
@@ -32,16 +33,35 @@ public class kMeans {
         
         conf.set("clusteringNewMeans", "clustering-new-means");
         conf.set("clusteringNewMeans_NewMeans", "new-means"); // Sub-directory of clusteringNewMeans.
-        conf.set("clusteringNewMeans_MaximumDistanceBetweenMeans", "maximum-distance-between-means"); // Sub-directory of clusteringNewMeans.
-                
+        conf.set("clusteringNewMeans_DistanceBetweenMeans", "distance-between-means"); // Sub-directory of clusteringNewMeans.
+        
+        conf.set("convergence", "convergence");
     }
     
     private static void cleanWorkingDirectories(FileSystem hdfs, Configuration conf) throws IOException {
         hdfs.delete(new Path(conf.get("meansElection")), true);
         hdfs.delete(new Path(conf.get("clusteringClosestPoints")), true);
         hdfs.delete(new Path(conf.get("clusteringNewMeans")), true);
+        hdfs.delete(new Path(conf.get("convergence")), true);
     }
 
+    private static double parseMaximumDistanceBetweenMeans(FileSystem hdfs, Configuration conf) throws IOException {
+        double maximumDistanceBetweenMeans = 0;
+        
+        FSDataInputStream hdfsDataInputStream = hdfs.open(new Path(conf.get("convergence") + "/part-r-00000"));
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(hdfsDataInputStream));
+        String line = "";
+
+        // It is a one line only file.
+        while ((line = bufferedReader.readLine()) != null) {
+            maximumDistanceBetweenMeans = Double.parseDouble(line);
+        }
+        
+        bufferedReader.close();
+        
+        return maximumDistanceBetweenMeans;
+    }
+    
     public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
         LocalConfiguration localConfig = new LocalConfiguration("config.ini");
         localConfig.printConfiguration();
@@ -76,6 +96,17 @@ public class kMeans {
         }
         
         System.out.println("****** SUCCESS: the clustering (new means phase) iteration succeeded. ******\n");
+        
+        Job convergence = Job.getInstance(conf, "convergence");
+        if (!Convergence.main(convergence)) {
+           System.err.println("****** ERROR: the convergence iteration failed. Exiting the job. ******\n");
+           System.exit(1);
+        }
+        
+        System.out.println("****** SUCCESS: the convergence iteration succeeded. ******\n");
+        
+        double maximumDistanceBetweenMeans = parseMaximumDistanceBetweenMeans(hdfs, conf);
+        System.out.println("****** Maximum distance between means: " + maximumDistanceBetweenMeans);
         
         /*double err = Double.POSITIVE_INFINITY;
         

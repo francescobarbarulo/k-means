@@ -60,6 +60,7 @@ public class Clustering_NewMeans {
     
     public static class Clustering_NewMeansReducer extends Reducer<Point, PartialNewMean, NullWritable, Point> {
         private static final Point newMean = new Point();
+        private static final DoubleWritable distanceBetweenMeans = new DoubleWritable();
         private static MultipleOutputs multipleOutputs;
         
         public void setup(Context context) {
@@ -80,6 +81,7 @@ public class Clustering_NewMeans {
             }
             
             newMean.div(numberOfPoints);
+            distanceBetweenMeans.set(key.getDistance(newMean));
                      
             // Emit the new mean and the distance between the old and new means, where 
             // the distance is used as stop condition of the algorithm.
@@ -88,7 +90,7 @@ public class Clustering_NewMeans {
             // Ex. "newMeans" --> outputPath/newMeans-r-000x
             // Ex. "newMeans/part" --> outputPath/newMeans/part-r-000x
             multipleOutputs.write("newMeans", null, newMean, conf.get("clusteringNewMeans_NewMeans") + "/part");
-            multipleOutputs.write("maximumDistance", null, key.getDistance(newMean), conf.get("clusteringNewMeans_MaximumDistanceBetweenMeans") + "/part");
+            multipleOutputs.write("distanceBetweenMeans", null, distanceBetweenMeans, conf.get("clusteringNewMeans_DistanceBetweenMeans") + "/part");
         }
         
         public void cleanup(Context context) throws IOException, InterruptedException {
@@ -123,9 +125,9 @@ public class Clustering_NewMeans {
         FileOutputFormat.setOutputPath(job, new Path(conf.get("clusteringNewMeans")));
         
         MultipleOutputs.addNamedOutput(job, "newMeans", TextOutputFormat.class, NullWritable.class, Point.class);
-        MultipleOutputs.addNamedOutput(job, "maximumDistance", TextOutputFormat.class, NullWritable.class, DoubleWritable.class);
+        MultipleOutputs.addNamedOutput(job, "distanceBetweenMeans", TextOutputFormat.class, NullWritable.class, DoubleWritable.class);
         
-        // Avoid empty files of the reducer due to MultipleOutputs.
+        // Avoid empty files produced by the reducer due to MultipleOutputs.
         LazyOutputFormat.setOutputFormatClass(job, TextOutputFormat.class);
         
         // Exit.
