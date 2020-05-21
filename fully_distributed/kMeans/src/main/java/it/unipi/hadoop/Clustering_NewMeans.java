@@ -45,7 +45,7 @@ public class Clustering_NewMeans {
             
             // Initial point with coordinates equal to 0.
             // Id is the same of the relative mean point.
-            partialSum.set(new double[Integer.parseInt(conf.get("numberOfDimensions"))], PointType.MEAN, key.getId().get());
+            partialSum.set(new double[conf.getInt("numberOfDimensions", 1)], PointType.MEAN, key.getId().get());
             long numberOfPoints = 0;
             
             for(PartialNewMean partialMean : values) {
@@ -71,8 +71,8 @@ public class Clustering_NewMeans {
             Configuration conf = context.getConfiguration();
             
             // Initial point with coordinates equal to 0.
-            // Id is the same of the relative mean point.
-            newMean.set(new double[Integer.parseInt(conf.get("numberOfDimensions"))], PointType.MEAN, key.getId().get());
+            // Id is the same of the relative mean point.         
+            newMean.set(new double[conf.getInt("numberOfDimensions", 1)], PointType.MEAN, key.getId().get());
             long numberOfPoints = 0;
             
             for(PartialNewMean partialMean : values) {
@@ -112,7 +112,7 @@ public class Clustering_NewMeans {
 
         // Set Reducer class. There can be multiple reducers.
         job.setReducerClass(Clustering_NewMeansReducer.class);
-        job.setNumReduceTasks(Integer.parseInt(conf.get("clusteringNumberOfReduceTasks")));
+        job.setNumReduceTasks(conf.getInt("clusteringNumberOfReduceTasks", 1));
         
         // Set key-value output format.
         job.setMapOutputKeyClass(Point.class);

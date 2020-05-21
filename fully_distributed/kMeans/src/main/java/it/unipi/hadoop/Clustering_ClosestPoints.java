@@ -49,7 +49,7 @@ class Clustering_ClosestPoints {
         
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-            long numberOfPoints = Long.parseLong(conf.get("numberOfPoints"));
+            long numberOfPoints = conf.getLong("numberOfPoints", 1);
             outputValue.set(Point.parse(value.toString()));
             
             if (outputValue.isData()) {
@@ -159,7 +159,7 @@ class Clustering_ClosestPoints {
 
         // Set Reducer class. There can be multiple reducers.
         job.setReducerClass(Clustering_ClosestPointsReducer.class);
-        job.setNumReduceTasks(Integer.parseInt(conf.get("clusteringNumberOfReduceTasks")));
+        job.setNumReduceTasks(conf.getInt("clusteringNumberOfReduceTasks", 1));
         
         // Set partitioner and grouping classes.
         // Needed to implement secondary sort and obtain sorted values in 

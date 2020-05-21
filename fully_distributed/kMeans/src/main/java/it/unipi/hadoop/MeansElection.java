@@ -24,13 +24,13 @@ public class MeansElection {
         
         public void setup(Context context){
             Configuration conf = context.getConfiguration();
-            randomGenerator.setSeed(Integer.parseInt(conf.get("seedRNG")));
+            randomGenerator.setSeed(conf.getInt("seedRNG", 1));
         }  
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
 
-            outputKey.set(randomGenerator.nextInt(Integer.parseInt(conf.get("numberOfPoints"))));
+            outputKey.set(randomGenerator.nextInt());
             outputValue.set(Point.parse(value.toString()));
             
             context.write(outputKey, outputValue);
@@ -46,7 +46,7 @@ public class MeansElection {
         
         public void reduce(IntWritable key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-            int numberOfClusters = Integer.parseInt(conf.get("numberOfClusters"));
+            int numberOfClusters = conf.getInt("numberOfClusters", 1);
             
             for (Point candidateMean : values){
                 if (meansCount < numberOfClusters){
@@ -68,7 +68,7 @@ public class MeansElection {
 
         public void reduce(IntWritable key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-            int numberOfClusters = Integer.parseInt(conf.get("numberOfClusters"));
+            int numberOfClusters = conf.getInt("numberOfClusters", 1);
             
             for (Point candidateMean : values){
                 if (meansCount < numberOfClusters){

@@ -19,13 +19,13 @@ public class kMeans {
         conf.set("fs.file.impl",org.apache.hadoop.fs.LocalFileSystem.class.getName());
 
         // Parameters.
-        conf.set("numberOfPoints", localConfig.getNumberOfPoints());
-        conf.set("numberOfDimensions", localConfig.getNumberOfDimensions());
-        conf.set("numberOfClusters", localConfig.getNumberOfClusters());
+        conf.setLong("numberOfPoints", localConfig.getNumberOfPoints());
+        conf.setInt("numberOfDimensions", localConfig.getNumberOfDimensions());
+        conf.setInt("numberOfClusters", localConfig.getNumberOfClusters());
         conf.set("inputPath", localConfig.getInputPath());
         conf.set("outputPath", localConfig.getOutputPath());
-        conf.set("seedRNG", localConfig.getSeedRNG());
-        conf.set("clusteringNumberOfReduceTasks", localConfig.getClusteringNumberOfReduceTasks());
+        conf.setInt("seedRNG", localConfig.getSeedRNG());
+        conf.setInt("clusteringNumberOfReduceTasks", localConfig.getClusteringNumberOfReduceTasks());
         
         // Directories.
         conf.set("meansElection", "means-election");

@@ -53,7 +53,6 @@ public class Convergence {
         }
         
         public void cleanup(Context context) throws IOException, InterruptedException {
-            Configuration conf = context.getConfiguration();
             context.write(null, maximumDistance);
         }
     }
