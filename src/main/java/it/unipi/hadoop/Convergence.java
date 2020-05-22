@@ -28,9 +28,9 @@ public class Convergence {
             Configuration conf = context.getConfiguration();
             distance = new HashMap<>();
 
-            FileSystem hdfs = FileSystem.get(URI.create("hdfs://" + conf.get("host")), conf, conf.get("user"));
-            FSDataInputStream fdsis = hdfs.open(new Path(conf.get("output") + "/part-r-00000"));
-            BufferedReader br = new BufferedReader(new InputStreamReader(fdsis));
+            FileSystem fs = FileSystem.get(context.getConfiguration());
+            InputStream is = fs.open(new Path(conf.get("output") + "/part-r-00000"));
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
             String line;
             while ((line = br.readLine()) != null){

@@ -1,7 +1,6 @@
 package it.unipi.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -30,9 +29,9 @@ public class Clustering {
 
             centroidSummation = new HashMap<>();
 
-            FileSystem hdfs = FileSystem.get(URI.create("hdfs://" + conf.get("host")), conf, conf.get("user"));
-            FSDataInputStream fdsis = hdfs.open(new Path(conf.get("intermediateMeans") + "/part-r-00000"));
-            BufferedReader br = new BufferedReader(new InputStreamReader(fdsis));
+            FileSystem fs = FileSystem.get(context.getConfiguration());
+            InputStream is = fs.open(new Path(conf.get("intermediateMeans") + "/part-r-00000"));
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
             String line;
             while ((line = br.readLine()) != null){

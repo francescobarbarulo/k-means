@@ -1,7 +1,6 @@
 package it.unipi.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
@@ -10,8 +9,8 @@ import org.apache.hadoop.util.GenericOptionsParser;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URI;
 
 public class kMeans {
 
@@ -38,14 +37,8 @@ public class kMeans {
         conf.set("sampledMeans", "sampled");            // sampled means
         conf.set("intermediateMeans", "tmp");           // tmp folder
         conf.set("error", "error");                     // convergence error
-        conf.set("host", "falken-namenode:9820");
-        conf.set("user", "hadoop");
 
-        /* For local debugging */
-        // conf.set("host", "localhost:9000");
-        // conf.set("user", "Francesco");
-
-        FileSystem hdfs = FileSystem.get(URI.create("hdfs://" + conf.get("host")), conf, conf.get("user"));
+        FileSystem fs = FileSystem.get(conf);
 
         /*  (*
             # Sampling
@@ -53,7 +46,7 @@ public class kMeans {
             - output: k sampled points
          */
 
-        hdfs.delete(new Path(conf.get("sampledMeans")), true);
+        fs.delete(new Path(conf.get("sampledMeans")), true);
 
         Job sampling = Job.getInstance(conf, "sampling means");
         if ( !Sampling.main(sampling) ) System.exit(1);
@@ -69,39 +62,41 @@ public class kMeans {
 
             Path srcPath = (step == 0) ? new Path(conf.get("sampledMeans") + "/part-r-00000") : new Path(conf.get("output") + "/part-r-00000");
             Path dstPath =  new Path(conf.get("intermediateMeans") + "/part-r-00000");
-            FileUtil.copy(hdfs, srcPath, hdfs, dstPath, false, true, conf);
+            FileUtil.copy(fs, srcPath, fs, dstPath, false, true, conf);
 
             /*
                 (*
                 # Clustering
-                - input : points + intermediate means (hdfs)
+                - input : points + intermediate means (cache)
                 - output: new centroids
             */
             /* We can get rid of previous centroids because we are going to compute new ones */
-            hdfs.delete(new Path(conf.get("output")), true);
+            fs.delete(new Path(conf.get("output")), true);
 
             Job clustering = Job.getInstance(conf, "clustering");
+            clustering.addCacheFile(new Path(conf.get("intermediateMeans") + "/part-r-00000").toUri());
             if ( !Clustering.main(clustering) ) System.exit(1);
 
             /* *) */
 
             /*  (*
                 # Convergence:
-                - input : points + actual centroids (hdfs)
+                - input : points + actual centroids (cache)
                 - output: convergence error
              */
             /* We can get rid of previous centroids because we are going to compute new ones */
-            hdfs.delete(new Path(conf.get("error")), true);
+            fs.delete(new Path(conf.get("error")), true);
 
             Job convergence = Job.getInstance(conf, "convergence");
+            convergence.addCacheFile(new Path(conf.get("output") + "/part-r-00000").toUri());
             if ( !Convergence.main(convergence) ) System.exit(1);
 
             /* *) */
 
             /* (*  Read the convergence error  */
 
-            FSDataInputStream fdsis = hdfs.open(new Path(conf.get("error") + "/part-r-00000"));
-            BufferedReader br = new BufferedReader(new InputStreamReader(fdsis));
+            InputStream is = fs.open(new Path(conf.get("error") + "/part-r-00000"));
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
             String line;
             if ((line = br.readLine()) == null ) { System.exit(1); }
