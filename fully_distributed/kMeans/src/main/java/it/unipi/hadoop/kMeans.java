@@ -137,7 +137,7 @@ public class kMeans {
     
     private static boolean stopConditionMet(Configuration conf, int iterationNumber, double lastMaximumDistanceBetweenMeans, double currentMaximumDistanceBetweenMeans) throws IOException {
         System.out.println("****** Iteration number: " + (iterationNumber + 1) + " ******");
-        System.out.println("****** Maximum distance between means: " + currentMaximumDistanceBetweenMeans + " ******");
+        System.out.println("****** Maximum distance between old and new means: " + currentMaximumDistanceBetweenMeans + " ******");
             
         if (iterationNumber == 0){
             System.out.println("****** Current error: not defined (first iteration). ******\n");
