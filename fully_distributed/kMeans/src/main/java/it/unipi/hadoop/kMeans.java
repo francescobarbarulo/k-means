@@ -33,6 +33,7 @@ public class kMeans {
         conf.setInt("seedRNG", localConfig.getSeedRNG());
         conf.setInt("clusteringNumberOfReduceTasks", localConfig.getClusteringNumberOfReduceTasks());
         conf.setDouble("errorThreshold", localConfig.getErrorThreshold());
+        conf.setBoolean("verbose", localConfig.getVerbose());
         
         // Working directories, based on the given output path.        
         conf.set("meansElection", localConfig.getOutputPath() + "/" + "means-election");
@@ -189,7 +190,6 @@ public class kMeans {
             executeKMeansIteration(conf);
             
             double currentMaximumDistanceBetweenMeans = parseMaximumDistanceBetweenMeans(conf);
-            
             if (stopConditionMet(conf, completedIterations, lastMaximumDistanceBetweenMeans, currentMaximumDistanceBetweenMeans)) {
                 hdfs.close();
                 return;

@@ -183,6 +183,6 @@ class Clustering_ClosestPoints {
         FileOutputFormat.setOutputPath(job, new Path(conf.get("clusteringClosestPoints")));
 
         // Exit.
-        return job.waitForCompletion(true);
+        return job.waitForCompletion(conf.getBoolean("verbose", true));
     }  
 }

@@ -25,6 +25,9 @@ public class LocalConfiguration {
     private double errorThreshold;
     private int maximumNumberOfIterations;
     
+    // [Hadoop]
+    private boolean verbose;
+    
     public LocalConfiguration(String configPath) {
         BasicConfigurator.configure();
         
@@ -42,6 +45,7 @@ public class LocalConfiguration {
             clusteringNumberOfReduceTasks = Integer.parseInt(config.get("K-means", "numberOfReduceTasks"));
             errorThreshold = Double.parseDouble(config.get("K-means", "errorThreshold"));
             maximumNumberOfIterations = Integer.parseInt(config.get("K-means", "maximumNumberOfIterations"));
+            verbose = Boolean.valueOf(config.get("Hadoop", "verbose"));
             
             validateConfiguration();
         } catch(IOException e){
@@ -125,6 +129,10 @@ public class LocalConfiguration {
     public int getMaximumNumberOfIterations() {
         return maximumNumberOfIterations;
     }
+    
+    public boolean getVerbose() {
+        return verbose;
+    }
      
     public void printConfiguration() {
         System.out.println("namenode = " + namenode);
@@ -138,6 +146,7 @@ public class LocalConfiguration {
         System.out.println("clusteringNumberOfReduceTasks = " + clusteringNumberOfReduceTasks);
         System.out.println("errorThreshold = " + errorThreshold + "%");
         System.out.println("maximumNumberOfIterations = " + maximumNumberOfIterations);
+        System.out.println("verbose = " + String.valueOf(verbose));
         System.out.println("");
     }
 }

@@ -109,6 +109,6 @@ public class MeansElection {
         FileOutputFormat.setOutputPath(job, new Path(conf.get("meansElection")));
 
         // Exit.
-        return job.waitForCompletion(true);
+        return job.waitForCompletion(conf.getBoolean("verbose", true));
     }  
 }

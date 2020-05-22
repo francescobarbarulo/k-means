@@ -81,6 +81,6 @@ public class Convergence {
         FileOutputFormat.setOutputPath(job, new Path(conf.get("convergence")));
         
         // Exit.
-        return job.waitForCompletion(true);
+        return job.waitForCompletion(conf.getBoolean("verbose", true));
     } 
 }

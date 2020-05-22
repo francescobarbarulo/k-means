@@ -131,6 +131,6 @@ public class Clustering_NewMeans {
         LazyOutputFormat.setOutputFormatClass(job, TextOutputFormat.class);
         
         // Exit.
-        return job.waitForCompletion(true);
+        return job.waitForCompletion(conf.getBoolean("verbose", true));
     } 
 }
