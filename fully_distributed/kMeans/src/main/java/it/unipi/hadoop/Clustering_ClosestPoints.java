@@ -179,7 +179,7 @@ class Clustering_ClosestPoints {
         
         // Define input and output path file. 
         CombineTextInputFormat.addInputPath(job, new Path(conf.get("inputPath")));
-        CombineTextInputFormat.addInputPath(job, new Path(conf.get("meansElection")));
+        CombineTextInputFormat.addInputPath(job, new Path(conf.get("iterationMeans")));
         FileOutputFormat.setOutputPath(job, new Path(conf.get("clusteringClosestPoints")));
 
         // Exit.

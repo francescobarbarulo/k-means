@@ -9,45 +9,77 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileUtil;
+import org.apache.hadoop.fs.LocalFileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.hdfs.DistributedFileSystem;
 
 
 public class kMeans {
+    private static FileSystem hdfs;
+    
     
     private static void setupConfiguration(LocalConfiguration localConfig, Configuration conf) {
         // File system manipulation.
-        conf.set("fs.hdfs.impl",org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
-        conf.set("fs.file.impl",org.apache.hadoop.fs.LocalFileSystem.class.getName());
+        conf.set("fs.hdfs.impl", DistributedFileSystem.class.getName());
+        conf.set("fs.file.impl", LocalFileSystem.class.getName());
 
         // Parameters.
         conf.setLong("numberOfPoints", localConfig.getNumberOfPoints());
         conf.setInt("numberOfDimensions", localConfig.getNumberOfDimensions());
         conf.setInt("numberOfClusters", localConfig.getNumberOfClusters());
         conf.set("inputPath", localConfig.getInputPath());
-        conf.set("outputPath", localConfig.getOutputPath());
         conf.setInt("seedRNG", localConfig.getSeedRNG());
         conf.setInt("clusteringNumberOfReduceTasks", localConfig.getClusteringNumberOfReduceTasks());
+        conf.setDouble("errorThreshold", localConfig.getErrorThreshold());
         
-        // Directories.
-        conf.set("meansElection", "means-election");
-        conf.set("clusteringClosestPoints", "clustering-closest-points");
+        // Working directories, based on the given output path.        
+        conf.set("meansElection", localConfig.getOutputPath() + "/" + "means-election");
+        conf.set("iterationMeans", localConfig.getOutputPath() + "/" + "iteration-means");
+        conf.set("clusteringClosestPoints", localConfig.getOutputPath() + "/" + "clustering-closest-points");
         
-        conf.set("clusteringNewMeans", "clustering-new-means");
+        conf.set("clusteringNewMeans", localConfig.getOutputPath() + "/" + "clustering-new-means");
         conf.set("clusteringNewMeans_NewMeans", "new-means"); // Sub-directory of clusteringNewMeans.
         conf.set("clusteringNewMeans_DistanceBetweenMeans", "distance-between-means"); // Sub-directory of clusteringNewMeans.
         
-        conf.set("convergence", "convergence");
+        conf.set("convergence", localConfig.getOutputPath() + "/" + "convergence");
     }
     
-    private static void cleanWorkingDirectories(FileSystem hdfs, Configuration conf) throws IOException {
-        hdfs.delete(new Path(conf.get("meansElection")), true);
-        hdfs.delete(new Path(conf.get("clusteringClosestPoints")), true);
-        hdfs.delete(new Path(conf.get("clusteringNewMeans")), true);
-        hdfs.delete(new Path(conf.get("convergence")), true);
+    private static void createDirectoryWithinHDFS(String directoryPath) throws IOException {
+        hdfs.mkdirs(new Path(directoryPath));
+    }
+        
+    private static void deleteDirectoryWithinHDFS(String directoryPath) throws IOException {
+        hdfs.delete(new Path(directoryPath), true);
+    }
+        
+    private static void copyDirectoryFilesWithinHDFS(String sourceDirectory, String destinationDirectory, Configuration conf) throws IOException {
+        RemoteIterator<LocatedFileStatus> sourceFiles = hdfs.listFiles(new Path(sourceDirectory), true);
+        Path destinationPath = new Path(destinationDirectory);
+        
+        if(sourceFiles != null) {
+            while(sourceFiles.hasNext()){
+                FileUtil.copy(hdfs, sourceFiles.next().getPath(), hdfs, destinationPath, true, conf);
+            }           
+        }
+    }
+    
+    private static void cleanWorkspace(Configuration conf) throws IOException {
+        deleteDirectoryWithinHDFS(conf.get("meansElection"));
+        deleteDirectoryWithinHDFS(conf.get("iterationMeans"));
+        deleteDirectoryWithinHDFS(conf.get("clusteringClosestPoints"));
+        deleteDirectoryWithinHDFS(conf.get("clusteringNewMeans"));
+        deleteDirectoryWithinHDFS(conf.get("convergence"));
+        
+        // Create new iteration means directory.
+        createDirectoryWithinHDFS(conf.get("iterationMeans"));
     }
 
-    private static double parseMaximumDistanceBetweenMeans(FileSystem hdfs, Configuration conf) throws IOException {
+    private static double parseMaximumDistanceBetweenMeans(Configuration conf) throws IOException {
         double maximumDistanceBetweenMeans = 0;
         
+        // Single maximum distance inside a single file. Guaranteed by the single reducer for convergence.
         FSDataInputStream hdfsDataInputStream = hdfs.open(new Path(conf.get("convergence") + "/part-r-00000"));
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(hdfsDataInputStream));
         String line = "";
@@ -62,6 +94,79 @@ public class kMeans {
         return maximumDistanceBetweenMeans;
     }
     
+    private static void executeMeansElection(Configuration conf) throws IOException, ClassNotFoundException, InterruptedException {
+        Job meansElection = Job.getInstance(conf, "means_election");
+        
+        if (!MeansElection.main(meansElection)) {
+           System.err.println("****** ERROR: the means election failed. Exiting the job. ******\n");
+           hdfs.close();
+           System.exit(1);
+        }
+        
+        System.out.println("****** SUCCESS: the means election succeeded. ******\n");
+    }
+    
+    private static void executeKMeansIteration(Configuration conf) throws IOException, ClassNotFoundException, InterruptedException {
+        Job clusteringClosestPoints = Job.getInstance(conf, "clustering_closest_points"); 
+        if (!Clustering_ClosestPoints.main(clusteringClosestPoints)) {
+            System.err.println("****** ERROR: the clustering (closest points phase) iteration failed. Exiting the job. ******\n");
+            hdfs.close();
+            System.exit(1);
+        }   
+        System.out.println("****** SUCCESS: the clustering (closest points phase) iteration succeeded. ******\n");
+            
+            
+        Job clusteringNewMeans = Job.getInstance(conf, "clustering_new_means");
+        if (!Clustering_NewMeans.main(clusteringNewMeans)) {
+            System.err.println("****** ERROR: the clustering (new means phase) iteration failed. Exiting the job. ******\n");
+            hdfs.close();
+            System.exit(1);
+        }
+        System.out.println("****** SUCCESS: the clustering (new means phase) iteration succeeded. ******\n");
+
+          
+        Job convergence = Job.getInstance(conf, "convergence");
+        if (!Convergence.main(convergence)) {
+            System.err.println("****** ERROR: the convergence iteration failed. Exiting the job. ******\n");
+            hdfs.close();
+            System.exit(1);
+        }
+        System.out.println("****** SUCCESS: the convergence iteration succeeded. ******\n");
+    }
+    
+    private static boolean stopConditionMet(Configuration conf, int iterationNumber, double lastMaximumDistanceBetweenMeans, double currentMaximumDistanceBetweenMeans) throws IOException {
+        System.out.println("****** Iteration number: " + (iterationNumber + 1) + " ******");
+        System.out.println("****** Maximum distance between means: " + currentMaximumDistanceBetweenMeans + " ******");
+            
+        if (iterationNumber == 0){
+            System.out.println("****** Current error: not defined (first iteration). ******\n");
+            return false;
+        }
+        
+        double errorThreshold = conf.getDouble("errorThreshold", 1);
+        double currentError = 0;
+        
+        if (currentMaximumDistanceBetweenMeans > 0) {
+            currentError = 100*((lastMaximumDistanceBetweenMeans - currentMaximumDistanceBetweenMeans)/lastMaximumDistanceBetweenMeans);
+        }
+                
+        System.out.println("****** Current error: " + currentError + "% ******");
+        System.out.println("****** Error threshold: " + errorThreshold + "% ******\n");
+        
+        if (currentError < 0 ) {
+            System.err.println("****** ERROR: the mean distance is not descreasing. Exiting the job ******");
+            hdfs.close();
+            System.exit(1);
+        }
+                
+        if (currentError <= errorThreshold) {
+            System.out.println("****** Stop condition met: error " + currentError + "% ******\n");
+            return true;
+        }
+        
+        return false;
+    }
+    
     public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
         LocalConfiguration localConfig = new LocalConfiguration("config.ini");
         localConfig.printConfiguration();
@@ -69,79 +174,40 @@ public class kMeans {
         Configuration conf = new Configuration();
         setupConfiguration(localConfig, conf);
         
-        FileSystem hdfs = FileSystem.get(URI.create("hdfs://" + localConfig.getNamenode() + ":" + localConfig.getNamenodePort()), conf);
-        cleanWorkingDirectories(hdfs, conf);
+        hdfs = FileSystem.get(URI.create("hdfs://" + localConfig.getNamenode() + ":" + localConfig.getNamenodePort()), conf);
+        cleanWorkspace(conf);
         
-        // First step: select the initial random means and save them in the "startingMeans" directory.
-        Job meansElection = Job.getInstance(conf, "means_election");
-        if (!MeansElection.main(meansElection)) {
-           System.err.println("****** ERROR: the means election failed. Exiting the job. ******\n");
-           System.exit(1);
+        // First step: select the initial random means.
+        executeMeansElection(conf);
+        copyDirectoryFilesWithinHDFS(conf.get("meansElection"), conf.get("iterationMeans"), conf);
+        
+        // Second step: update the means until a stop condition is met.
+        double lastMaximumDistanceBetweenMeans = Double.POSITIVE_INFINITY;
+        int completedIterations = 0;
+        
+        while (completedIterations < localConfig.getMaximumNumberOfIterations()) {
+            executeKMeansIteration(conf);
+            
+            double currentMaximumDistanceBetweenMeans = parseMaximumDistanceBetweenMeans(conf);
+            
+            if (stopConditionMet(conf, completedIterations, lastMaximumDistanceBetweenMeans, currentMaximumDistanceBetweenMeans)) {
+                hdfs.close();
+                return;
+            }
+                
+            lastMaximumDistanceBetweenMeans = currentMaximumDistanceBetweenMeans;
+            completedIterations++;
+            
+            deleteDirectoryWithinHDFS(conf.get("iterationMeans"));
+            createDirectoryWithinHDFS(conf.get("iterationMeans"));
+            copyDirectoryFilesWithinHDFS(conf.get("clusteringNewMeans") + "/" + conf.get("clusteringNewMeans_NewMeans"), conf.get("iterationMeans"), conf);
+            
+            deleteDirectoryWithinHDFS(conf.get("clusteringClosestPoints"));
+            deleteDirectoryWithinHDFS(conf.get("clusteringNewMeans"));
+            deleteDirectoryWithinHDFS(conf.get("convergence"));
         }
         
-        System.out.println("****** SUCCESS: the means election succeeded. ******\n");
-        
-        Job clusteringClosestPoints = Job.getInstance(conf, "clustering_closest_points");
-        if (!Clustering_ClosestPoints.main(clusteringClosestPoints)) {
-           System.err.println("****** ERROR: the clustering (closest points phase) iteration failed. Exiting the job. ******\n");
-           System.exit(1);
-        }
-        
-        System.out.println("****** SUCCESS: the clustering (closest points phase) iteration succeeded. ******\n");
-        
-        Job clusteringNewMeans = Job.getInstance(conf, "clustering_new_means");
-        if (!Clustering_NewMeans.main(clusteringNewMeans)) {
-           System.err.println("****** ERROR: the clustering (new means phase) iteration failed. Exiting the job. ******\n");
-           System.exit(1);
-        }
-        
-        System.out.println("****** SUCCESS: the clustering (new means phase) iteration succeeded. ******\n");
-        
-        Job convergence = Job.getInstance(conf, "convergence");
-        if (!Convergence.main(convergence)) {
-           System.err.println("****** ERROR: the convergence iteration failed. Exiting the job. ******\n");
-           System.exit(1);
-        }
-        
-        System.out.println("****** SUCCESS: the convergence iteration succeeded. ******\n");
-        
-        double maximumDistanceBetweenMeans = parseMaximumDistanceBetweenMeans(hdfs, conf);
-        System.out.println("****** Maximum distance between means: " + maximumDistanceBetweenMeans);
-        
-        /*double err = Double.POSITIVE_INFINITY;
-        
-        for (int i = 0; i < 3; i++) {
-            System.out.print("=========================\n");
-            System.out.printf("======== STEP %d ========\n", i);
-            System.out.print("=========================\n\n");
-
-            if (i == 0)
-                // If it's the first step we take the sampled means
-                FileUtils.copyDirectory(new File(conf.get("startingMeans")), new File(conf.get("intermediateMeans")));
-            else
-                //In the next steps we take the new centroids computed in the previous step
-                FileUtils.copyDirectory(new File(conf.get("finalMeans")), new File(conf.get("intermediateMeans")));
-
-            // We can get rid of previous centroids because we are going to compute new ones
-            FileUtils.deleteDirectory(new File(conf.get("finalMeans")));
-
-            Job clustering = Job.getInstance(conf, "clustering");
-            clustering.addCacheFile(new Path(conf.get("intermediateMeans") + "/part-r-00000").toUri());
-            boolean clusteringExit = Clustering.main(clustering);
-
-            FileUtils.deleteDirectory(new File(conf.get("output")));
-
-            Job convergence = Job.getInstance(conf, "convergence");
-            convergence.addCacheFile(new Path(conf.get("finalMeans") + "/part-r-00000").toUri());
-            boolean convergenceExit = Convergence.main(convergence);
-
-            File f = new File(conf.get("output")+"/part-r-00000");
-            Scanner sc = new Scanner(f);
-
-            if ( !sc.hasNextLine() ) { System.exit(1); }
-
-            err = Double.parseDouble(sc.nextLine());
-            System.out.println("\n******ERR: " + err + "*********\n");
-        }*/
-    } 
+        System.out.println("****** Maximum number of iterations reached: " + completedIterations + " ******");
+        hdfs.close();
+    }
 }

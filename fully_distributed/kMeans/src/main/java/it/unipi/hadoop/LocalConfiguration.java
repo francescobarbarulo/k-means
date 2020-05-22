@@ -136,7 +136,7 @@ public class LocalConfiguration {
         System.out.println("outputPath = " + outputPath);
         System.out.println("seedRNG = " + seedRNG);
         System.out.println("clusteringNumberOfReduceTasks = " + clusteringNumberOfReduceTasks);
-        System.out.println("errorThreshold = " + errorThreshold);
+        System.out.println("errorThreshold = " + errorThreshold + "%");
         System.out.println("maximumNumberOfIterations = " + maximumNumberOfIterations);
         System.out.println("");
     }
