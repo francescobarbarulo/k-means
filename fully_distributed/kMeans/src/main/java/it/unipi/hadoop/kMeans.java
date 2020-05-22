@@ -148,18 +148,12 @@ public class kMeans {
         double currentError = 0;
         
         if (currentMaximumDistanceBetweenMeans > 0) {
-            currentError = 100*((lastMaximumDistanceBetweenMeans - currentMaximumDistanceBetweenMeans)/lastMaximumDistanceBetweenMeans);
+            currentError = (Math.abs(lastMaximumDistanceBetweenMeans - currentMaximumDistanceBetweenMeans)/lastMaximumDistanceBetweenMeans)*100;
         }
                 
         System.out.println("****** Current error: " + currentError + "% ******");
         System.out.println("****** Error threshold: " + errorThreshold + "% ******\n");
-        
-        if (currentError < 0 ) {
-            System.err.println("****** ERROR: the mean distance is not descreasing. Exiting the job ******");
-            hdfs.close();
-            System.exit(1);
-        }
-                
+                        
         if (currentError <= errorThreshold) {
             System.out.println("****** Stop condition met: error " + currentError + "% ******\n");
             return true;
