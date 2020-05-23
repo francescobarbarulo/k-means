@@ -1,12 +1,17 @@
+#import numpy as np
 import sys
-import numpy as np
-import random
 import pprint
 from operator import add
 from pyspark import SparkContext
 
 master = "local[*]"
 pp = pprint.PrettyPrinter(indent=2).pprint
+
+def cast_list(x):
+    Y = []
+    for i in x:
+        Y.append(float(i))
+    return Y
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
@@ -17,14 +22,11 @@ if __name__ == "__main__":
     CONF_N = int(sys.argv[2])
 
     sc = SparkContext(master, "KMeans")
+    
+    pointstxt = sc.textFile("./" + CONF_INPUT_FILE)
+    points_list = pointstxt.map(lambda x: x.split(","))
+    points = points_list.map(lambda x: cast_list(x))
+    means = points.takeSample(num = CONF_N, withReplacement=False)
+    print(means)
 
-    random.seed(42)
-
-    m = sc.textFile(CONF_INPUT_FILE) \
-        .map(lambda x: ( ( int(random.uniform(0, CONF_N)), [ np.fromstring(x, dtype=float, sep=',') ] ))) \
-        .reduceByKey(lambda x, y: x + y) \
-        .sortByKey()
-
-    pp(m.collect())
-    pp(m.count())
-
+    
