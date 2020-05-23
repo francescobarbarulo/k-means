@@ -18,15 +18,15 @@ if __name__ == "__main__":
         print('Usage: ' + sys.argv[0] + ' <input file> <n>', file=sys.stderr)
         sys.exit(1)
 
-    CONF_INPUT_FILE = sys.argv[1]
-    CONF_N = int(sys.argv[2])
+    INPUT_FILE = sys.argv[1]
+    MEANS_N = int(sys.argv[2])
 
     sc = SparkContext(master, "KMeans")
     
-    pointstxt = sc.textFile("./" + CONF_INPUT_FILE)
+    pointstxt = sc.textFile("./" + INPUT_FILE)
     points_list = pointstxt.map(lambda x: x.split(","))
     points = points_list.map(lambda x: cast_list(x))
-    means = points.takeSample(num = CONF_N, withReplacement=False)
+    means = points.takeSample(num = MEANS_N, withReplacement=False)
     print(means)
 
     
