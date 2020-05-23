@@ -32,7 +32,7 @@ public class kMeans {
         conf.set("inputPath", localConfig.getInputPath());
         conf.setInt("seedRNG", localConfig.getSeedRNG());
         conf.setInt("clusteringNumberOfReduceTasks", localConfig.getClusteringNumberOfReduceTasks());
-        conf.setDouble("errorThreshold", localConfig.getErrorThreshold());
+        conf.setDouble("distanceThreshold", localConfig.getDistanceThreshold());
         conf.setBoolean("verbose", localConfig.getVerbose());
         
         // Working directories, based on the given output path.        
@@ -135,27 +135,21 @@ public class kMeans {
         System.out.println("****** SUCCESS: the convergence iteration succeeded. ******\n");
     }
     
-    private static boolean stopConditionMet(Configuration conf, int iterationNumber, double lastMaximumDistanceBetweenMeans, double currentMaximumDistanceBetweenMeans) throws IOException {
+    private static boolean stopConditionMet(Configuration conf, int iterationNumber) throws IOException {
+        double currentMaximumDistanceBetweenMeans = parseMaximumDistanceBetweenMeans(conf);
+        double distanceThreshold = conf.getDouble("distanceThreshold", 1);
+        
         System.out.println("****** Iteration number: " + (iterationNumber + 1) + " ******");
         System.out.println("****** Maximum distance between old and new means: " + currentMaximumDistanceBetweenMeans + " ******");
-            
-        if (iterationNumber == 0){
-            System.out.println("****** Current error: not defined (first iteration). ******\n");
+        System.out.println("****** Distance threshold: " + distanceThreshold + " ******\n");
+       
+        if (iterationNumber == 0) {
+            System.out.println("****** First iteration: stop condition not checked. ******");
             return false;
         }
         
-        double errorThreshold = conf.getDouble("errorThreshold", 1);
-        double currentError = 0;
-        
-        if (currentMaximumDistanceBetweenMeans > 0) {
-            currentError = (Math.abs(lastMaximumDistanceBetweenMeans - currentMaximumDistanceBetweenMeans)/lastMaximumDistanceBetweenMeans)*100;
-        }
-                
-        System.out.println("****** Current error: " + currentError + "% ******");
-        System.out.println("****** Error threshold: " + errorThreshold + "% ******\n");
-                        
-        if (currentError <= errorThreshold) {
-            System.out.println("****** Stop condition met: error " + currentError + "% ******\n");
+        if (currentMaximumDistanceBetweenMeans <= distanceThreshold ) {
+            System.out.println("****** Stop condition met: distance " + currentMaximumDistanceBetweenMeans + " ******\n");
             return true;
         }
         
@@ -177,20 +171,15 @@ public class kMeans {
         copyDirectoryFilesWithinHDFS(conf.get("meansElection"), conf.get("iterationMeans"), conf);
         
         // Second step: update the means until a stop condition is met.
-        double lastMaximumDistanceBetweenMeans = Double.POSITIVE_INFINITY;
         int completedIterations = 0;
         
         while (completedIterations < localConfig.getMaximumNumberOfIterations()) {
             executeKMeansIteration(conf);
-            
-            double currentMaximumDistanceBetweenMeans = parseMaximumDistanceBetweenMeans(conf);
-            if (stopConditionMet(conf, completedIterations, lastMaximumDistanceBetweenMeans, currentMaximumDistanceBetweenMeans)) {
+ 
+            if (stopConditionMet(conf, completedIterations)) {
                 hdfs.close();
                 return;
             }
-                
-            lastMaximumDistanceBetweenMeans = currentMaximumDistanceBetweenMeans;
-            completedIterations++;
             
             deleteDirectoryWithinHDFS(conf.get("iterationMeans"));
             createDirectoryWithinHDFS(conf.get("iterationMeans"));
@@ -199,6 +188,8 @@ public class kMeans {
             deleteDirectoryWithinHDFS(conf.get("clusteringClosestPoints"));
             deleteDirectoryWithinHDFS(conf.get("clusteringNewMeans"));
             deleteDirectoryWithinHDFS(conf.get("convergence"));
+
+            completedIterations++;
         }
         
         System.out.println("****** Maximum number of iterations reached: " + completedIterations + " ******");

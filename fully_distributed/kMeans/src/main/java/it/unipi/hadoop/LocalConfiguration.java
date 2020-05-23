@@ -22,7 +22,7 @@ public class LocalConfiguration {
     // [K-means]
     private int seedRNG;
     private int clusteringNumberOfReduceTasks;
-    private double errorThreshold;
+    private double distanceThreshold;
     private int maximumNumberOfIterations;
     
     // [Hadoop]
@@ -43,7 +43,7 @@ public class LocalConfiguration {
             outputPath = config.get("Dataset", "outputPath");
             seedRNG = Integer.parseInt(config.get("K-means", "seedRNG"));
             clusteringNumberOfReduceTasks = Integer.parseInt(config.get("K-means", "numberOfReduceTasks"));
-            errorThreshold = Double.parseDouble(config.get("K-means", "errorThreshold"));
+            distanceThreshold = Double.parseDouble(config.get("K-means", "distanceThreshold"));
             maximumNumberOfIterations = Integer.parseInt(config.get("K-means", "maximumNumberOfIterations"));
             verbose = Boolean.valueOf(config.get("Hadoop", "verbose"));
             
@@ -75,7 +75,7 @@ public class LocalConfiguration {
             System.exit(1);
         }
         
-        if (errorThreshold < 0) { 
+        if (distanceThreshold < 0) { 
             System.err.println("LocalConfiguration validation error: the error threshold must be greater than or equal to 0");
             System.exit(1);
         }
@@ -122,8 +122,8 @@ public class LocalConfiguration {
         return clusteringNumberOfReduceTasks;
     }
     
-    public double getErrorThreshold() {
-        return errorThreshold;
+    public double getDistanceThreshold() {
+        return distanceThreshold;
     }
     
     public int getMaximumNumberOfIterations() {
@@ -144,7 +144,7 @@ public class LocalConfiguration {
         System.out.println("outputPath = " + outputPath);
         System.out.println("seedRNG = " + seedRNG);
         System.out.println("clusteringNumberOfReduceTasks = " + clusteringNumberOfReduceTasks);
-        System.out.println("errorThreshold = " + errorThreshold + "%");
+        System.out.println("distanceThreshold = " + distanceThreshold);
         System.out.println("maximumNumberOfIterations = " + maximumNumberOfIterations);
         System.out.println("verbose = " + String.valueOf(verbose));
         System.out.println("");
