@@ -48,7 +48,17 @@ public class Point implements WritableComparable {
         return this.type;
     }
     
+    public int getNumberOfDimensions() {
+        double[] vector = (double[]) this.coordinates.get();
+        return vector.length;
+    }
+    
     public double getDistance(Point that){
+        if (this.getNumberOfDimensions() != that.getNumberOfDimensions()) {
+            System.err.println("The points " + this.toString() + " " + that.toString() + " have different dimensions. Distance not defined.");
+            return -1;
+        }
+        
         double sum = 0;
         double[] thisVector = (double[]) this.coordinates.get();
         double[] thatVector = (double[]) that.getCoordinates().get();
@@ -61,6 +71,11 @@ public class Point implements WritableComparable {
     }
 
     public void add(Point that){
+        if (this.getNumberOfDimensions() != that.getNumberOfDimensions()) {
+            System.err.println("The points " + this.toString() + " " + that.toString() + " have different dimensions. The sum is not defined.");
+            return;
+        }
+        
         double[] thisVector = (double[]) this.coordinates.get();
         double[] thatVector = (double[]) that.getCoordinates().get();
         for (int i = 0; i < thisVector.length; i++){
