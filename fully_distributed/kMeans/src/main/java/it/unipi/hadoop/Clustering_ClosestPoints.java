@@ -52,6 +52,12 @@ class Clustering_ClosestPoints {
             long numberOfPoints = conf.getLong("numberOfPoints", 1);
             outputValue.set(Point.parse(value.toString()));
             
+            if (outputValue.getNumberOfDimensions() != conf.getInt("numberOfDimensions", -1)) {
+                System.err.println("The point " + outputValue.toString() + " does not match the configured number of dimensions. It has been excluded from the iteration.");
+                System.err.println("Point dimensions: " + outputValue.getNumberOfDimensions() + "; configured dimensions: " + conf.getInt("numberOfDimensions", -1));
+                return;
+            }
+            
             if (outputValue.isData()) {
                 outputKey.set(outputValue.getId().get(), PointType.DATA);
                 context.write(outputKey, outputValue);

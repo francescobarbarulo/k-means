@@ -29,9 +29,14 @@ public class MeansElection {
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
-
             outputKey.set(randomGenerator.nextInt());
             outputValue.set(Point.parse(value.toString()));
+            
+            if (outputValue.getNumberOfDimensions() != conf.getInt("numberOfDimensions", -1)) {
+                System.err.println("The point " + outputValue.toString() + " does not match the configured number of dimensions. It has been excluded from the iteration.");
+                System.err.println("Point dimensions: " + outputValue.getNumberOfDimensions() + "; configured dimensions: " + conf.getInt("numberOfDimensions", -1));
+                return;
+            }
             
             context.write(outputKey, outputValue);
         }
