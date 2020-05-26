@@ -36,13 +36,13 @@ public class kMeans {
         conf.setBoolean("verbose", localConfig.getVerbose());
         
         // Working directories, based on the given output path.        
-        conf.set("meansElection", localConfig.getOutputPath() + "/" + "means-election");
-        conf.set("iterationMeans", localConfig.getOutputPath() + "/" + "iteration-means");
+        conf.set("sampledMeans", localConfig.getOutputPath() + "/" + "sampled-means");
+        conf.set("intermediateMeans", localConfig.getOutputPath() + "/" + "intermediate-means");
         conf.set("clusteringClosestPoints", localConfig.getOutputPath() + "/" + "clustering-closest-points");
         
-        conf.set("clusteringNewMeans", localConfig.getOutputPath() + "/" + "clustering-new-means");
-        conf.set("clusteringNewMeans_NewMeans", "new-means"); // Sub-directory of clusteringNewMeans.
-        conf.set("clusteringNewMeans_DistanceBetweenMeans", "distance-between-means"); // Sub-directory of clusteringNewMeans.
+        conf.set("clusteringFinalMeans", localConfig.getOutputPath() + "/" + "clustering-final-means");
+        conf.set("clusteringFinalMeans_FinalMeans", "final-means"); // Sub-directory of clusteringFinalMeans.
+        conf.set("clusteringFinalMeans_DistanceBetweenMeans", "distance-between-means"); // Sub-directory of clusteringFinalMeans.
         
         conf.set("convergence", localConfig.getOutputPath() + "/" + "convergence");
     }
@@ -59,22 +59,22 @@ public class kMeans {
         RemoteIterator<LocatedFileStatus> sourceFiles = hdfs.listFiles(new Path(sourceDirectory), true);
         Path destinationPath = new Path(destinationDirectory);
         
-        if(sourceFiles != null) {
-            while(sourceFiles.hasNext()){
+        if (sourceFiles != null) {
+            while(sourceFiles.hasNext()) {
                 FileUtil.copy(hdfs, sourceFiles.next().getPath(), hdfs, destinationPath, true, conf);
             }           
         }
     }
     
     private static void cleanWorkspace(Configuration conf) throws IOException {
-        deleteDirectoryWithinHDFS(conf.get("meansElection"));
-        deleteDirectoryWithinHDFS(conf.get("iterationMeans"));
+        deleteDirectoryWithinHDFS(conf.get("sampledMeans"));
+        deleteDirectoryWithinHDFS(conf.get("intermediateMeans"));
         deleteDirectoryWithinHDFS(conf.get("clusteringClosestPoints"));
-        deleteDirectoryWithinHDFS(conf.get("clusteringNewMeans"));
+        deleteDirectoryWithinHDFS(conf.get("clusteringFinalMeans"));
         deleteDirectoryWithinHDFS(conf.get("convergence"));
         
         // Create new iteration means directory.
-        createDirectoryWithinHDFS(conf.get("iterationMeans"));
+        createDirectoryWithinHDFS(conf.get("intermediateMeans"));
     }
 
     private static double parseMaximumDistanceBetweenMeans(Configuration conf) throws IOException {
@@ -95,16 +95,16 @@ public class kMeans {
         return maximumDistanceBetweenMeans;
     }
     
-    private static void executeMeansElection(Configuration conf) throws IOException, ClassNotFoundException, InterruptedException {
-        Job meansElection = Job.getInstance(conf, "means_election");
+    private static void executeMeansSampling(Configuration conf) throws IOException, ClassNotFoundException, InterruptedException {
+        Job meansSampling = Job.getInstance(conf, "means_sampling");
         
-        if (!MeansElection.main(meansElection)) {
-           System.err.println("****** ERROR: the means election failed. Exiting the job. ******\n");
+        if (!MeansSampling.main(meansSampling)) {
+           System.err.println("****** ERROR: the sampling of the initial means failed. Exiting the job. ******\n");
            hdfs.close();
            System.exit(1);
         }
         
-        System.out.println("****** SUCCESS: the means election succeeded. ******\n");
+        System.out.println("****** SUCCESS: the sampling of the initial means succeeded. ******\n");
     }
     
     private static void executeKMeansIteration(Configuration conf) throws IOException, ClassNotFoundException, InterruptedException {
@@ -117,13 +117,13 @@ public class kMeans {
         System.out.println("****** SUCCESS: the clustering (closest points phase) iteration succeeded. ******\n");
             
             
-        Job clusteringNewMeans = Job.getInstance(conf, "clustering_new_means");
-        if (!Clustering_NewMeans.main(clusteringNewMeans)) {
-            System.err.println("****** ERROR: the clustering (new means phase) iteration failed. Exiting the job. ******\n");
+        Job clusteringFinalMeans = Job.getInstance(conf, "clustering_final_means");
+        if (!Clustering_FinalMeans.main(clusteringFinalMeans)) {
+            System.err.println("****** ERROR: the clustering (final means phase) iteration failed. Exiting the job. ******\n");
             hdfs.close();
             System.exit(1);
         }
-        System.out.println("****** SUCCESS: the clustering (new means phase) iteration succeeded. ******\n");
+        System.out.println("****** SUCCESS: the clustering (final means phase) iteration succeeded. ******\n");
 
           
         Job convergence = Job.getInstance(conf, "convergence");
@@ -144,7 +144,7 @@ public class kMeans {
         System.out.println("****** Distance threshold: " + distanceThreshold + " ******\n");
        
         if (iterationNumber == 0) {
-            System.out.println("****** First iteration: stop condition not checked. ******");
+            System.out.println("****** First iteration: stop condition not checked. ******\n");
             return false;
         }
         
@@ -162,13 +162,13 @@ public class kMeans {
         
         Configuration conf = new Configuration();
         setupConfiguration(localConfig, conf);
-        
+                
         hdfs = FileSystem.get(URI.create("hdfs://" + localConfig.getNamenode() + ":" + localConfig.getNamenodePort()), conf);
         cleanWorkspace(conf);
         
         // First step: select the initial random means.
-        executeMeansElection(conf);
-        copyDirectoryFilesWithinHDFS(conf.get("meansElection"), conf.get("iterationMeans"), conf);
+        executeMeansSampling(conf);
+        copyDirectoryFilesWithinHDFS(conf.get("sampledMeans"), conf.get("intermediateMeans"), conf);
         
         // Second step: update the means until a stop condition is met.
         int completedIterations = 0;
@@ -181,12 +181,12 @@ public class kMeans {
                 return;
             }
             
-            deleteDirectoryWithinHDFS(conf.get("iterationMeans"));
-            createDirectoryWithinHDFS(conf.get("iterationMeans"));
-            copyDirectoryFilesWithinHDFS(conf.get("clusteringNewMeans") + "/" + conf.get("clusteringNewMeans_NewMeans"), conf.get("iterationMeans"), conf);
+            deleteDirectoryWithinHDFS(conf.get("intermediateMeans"));
+            createDirectoryWithinHDFS(conf.get("intermediateMeans"));
+            copyDirectoryFilesWithinHDFS(conf.get("clusteringFinalMeans") + "/" + conf.get("clusteringFinalMeans_FinalMeans"), conf.get("intermediateMeans"), conf);
             
             deleteDirectoryWithinHDFS(conf.get("clusteringClosestPoints"));
-            deleteDirectoryWithinHDFS(conf.get("clusteringNewMeans"));
+            deleteDirectoryWithinHDFS(conf.get("clusteringFinalMeans"));
             deleteDirectoryWithinHDFS(conf.get("convergence"));
 
             completedIterations++;

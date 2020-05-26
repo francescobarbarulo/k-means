@@ -77,7 +77,7 @@ public class Convergence {
         job.setOutputValueClass(DoubleWritable.class);
         
         // Define input and output path file.
-        FileInputFormat.addInputPath(job, new Path(conf.get("clusteringNewMeans") + "/" + conf.get("clusteringNewMeans_DistanceBetweenMeans")));
+        FileInputFormat.addInputPath(job, new Path(conf.get("clusteringFinalMeans") + "/" + conf.get("clusteringFinalMeans_DistanceBetweenMeans")));
         FileOutputFormat.setOutputPath(job, new Path(conf.get("convergence")));
         
         // Exit.

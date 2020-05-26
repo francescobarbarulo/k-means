@@ -15,9 +15,9 @@ import java.io.IOException;
 import java.util.Random;
 
 
-public class MeansElection {
+public class MeansSampling {
 
-    public static class MeansElectionMapper extends Mapper<LongWritable, Text, IntWritable, Point> {
+    public static class MeansSamplingMapper extends Mapper<LongWritable, Text, IntWritable, Point> {
         private final static Random randomGenerator = new Random();
         private final static IntWritable outputKey = new IntWritable();
         private final static Point outputValue = new Point();
@@ -42,7 +42,7 @@ public class MeansElection {
         }
     }
 
-    public static class MeansElectionCombiner extends Reducer<IntWritable, Point, IntWritable, Point> {
+    public static class MeansSamplingCombiner extends Reducer<IntWritable, Point, IntWritable, Point> {
         private static int meansCount;
 
         public void setup(Context context){
@@ -63,7 +63,7 @@ public class MeansElection {
         }
     }
     
-    public static class MeansElectionReducer extends Reducer<IntWritable, Point, NullWritable, Point>{
+    public static class MeansSamplingReducer extends Reducer<IntWritable, Point, NullWritable, Point>{
         private static int meansCount;
         private static final Point chosenMean = new Point();
 
@@ -91,16 +91,16 @@ public class MeansElection {
         Configuration conf = job.getConfiguration();
 
         // Set JAR class.
-        job.setJarByClass(MeansElection.class);
+        job.setJarByClass(MeansSampling.class);
 
         // Set Mapper class.
-        job.setMapperClass(MeansElectionMapper.class);
+        job.setMapperClass(MeansSamplingMapper.class);
 
         // Set Combiner class.
-        job.setCombinerClass(MeansElectionCombiner.class);
+        job.setCombinerClass(MeansSamplingCombiner.class);
 
         // Set Reducer class. It must be a single reducer.
-        job.setReducerClass(MeansElectionReducer.class);
+        job.setReducerClass(MeansSamplingReducer.class);
         job.setNumReduceTasks(1);
 
         // Set key-value output format.
@@ -111,7 +111,7 @@ public class MeansElection {
 
         // Define input and output path file.
         FileInputFormat.addInputPath(job, new Path(conf.get("inputPath")));
-        FileOutputFormat.setOutputPath(job, new Path(conf.get("meansElection")));
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("sampledMeans")));
 
         // Exit.
         return job.waitForCompletion(conf.getBoolean("verbose", true));

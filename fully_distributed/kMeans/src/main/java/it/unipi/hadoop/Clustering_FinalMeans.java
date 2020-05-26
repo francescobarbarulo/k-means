@@ -18,9 +18,9 @@ import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 
-public class Clustering_NewMeans {
+public class Clustering_FinalMeans {
         
-    public static class Clustering_NewMeansMapper extends Mapper<LongWritable, Text, Point, PartialNewMean> {
+    public static class Clustering_FinalMeansMapper extends Mapper<LongWritable, Text, Point, PartialNewMean> {
         private static final Point meanPoint = new Point();
         private static final Point dataPoint = new Point();
         private static final PartialNewMean partialNewMean = new PartialNewMean();
@@ -36,7 +36,7 @@ public class Clustering_NewMeans {
         }   
     }
     
-    public static class Clustering_NewMeansCombiner extends Reducer<Point, PartialNewMean, Point, PartialNewMean> {
+    public static class Clustering_FinalMeansCombiner extends Reducer<Point, PartialNewMean, Point, PartialNewMean> {
         private static final Point partialSum = new Point();
         private static final PartialNewMean partialNewMean = new PartialNewMean();
 
@@ -58,7 +58,7 @@ public class Clustering_NewMeans {
         }
     }
     
-    public static class Clustering_NewMeansReducer extends Reducer<Point, PartialNewMean, NullWritable, Point> {
+    public static class Clustering_FinalMeansReducer extends Reducer<Point, PartialNewMean, NullWritable, Point> {
         private static final Point newMean = new Point();
         private static final DoubleWritable distanceBetweenMeans = new DoubleWritable();
         private static MultipleOutputs multipleOutputs;
@@ -87,10 +87,10 @@ public class Clustering_NewMeans {
             // the distance is used as stop condition of the algorithm.
             // The '/part' in the path specifies to create a folder with the preceding name to store the outputs,
             // instead of an output file with the preceding name.
-            // Ex. "newMeans" --> outputPath/newMeans-r-000x
-            // Ex. "newMeans/part" --> outputPath/newMeans/part-r-000x
-            multipleOutputs.write("newMeans", null, newMean, conf.get("clusteringNewMeans_NewMeans") + "/part");
-            multipleOutputs.write("distanceBetweenMeans", null, distanceBetweenMeans, conf.get("clusteringNewMeans_DistanceBetweenMeans") + "/part");
+            // Ex. "finalMeans" --> outputPath/finalMeans-r-000x
+            // Ex. "finalMeans/part" --> outputPath/finalMeans/part-r-000x
+            multipleOutputs.write("finalMeans", null, newMean, conf.get("clusteringFinalMeans_FinalMeans") + "/part");
+            multipleOutputs.write("distanceBetweenMeans", null, distanceBetweenMeans, conf.get("clusteringFinalMeans_DistanceBetweenMeans") + "/part");
         }
         
         public void cleanup(Context context) throws IOException, InterruptedException {
@@ -102,16 +102,16 @@ public class Clustering_NewMeans {
         Configuration conf = job.getConfiguration();
 
         // Set JAR class.
-        job.setJarByClass(Clustering_NewMeans.class);
+        job.setJarByClass(Clustering_FinalMeans.class);
 
         // Set Mapper class.
-        job.setMapperClass(Clustering_NewMeansMapper.class);
+        job.setMapperClass(Clustering_FinalMeansMapper.class);
 
         // Set Combiner class.
-        job.setCombinerClass(Clustering_NewMeansCombiner.class);
+        job.setCombinerClass(Clustering_FinalMeansCombiner.class);
 
         // Set Reducer class. There can be multiple reducers.
-        job.setReducerClass(Clustering_NewMeansReducer.class);
+        job.setReducerClass(Clustering_FinalMeansReducer.class);
         job.setNumReduceTasks(conf.getInt("clusteringNumberOfReduceTasks", 1));
         
         // Set key-value output format.
@@ -122,9 +122,9 @@ public class Clustering_NewMeans {
         
         // Define input and output path file. 
         FileInputFormat.addInputPath(job, new Path(conf.get("clusteringClosestPoints")));
-        FileOutputFormat.setOutputPath(job, new Path(conf.get("clusteringNewMeans")));
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("clusteringFinalMeans")));
         
-        MultipleOutputs.addNamedOutput(job, "newMeans", TextOutputFormat.class, NullWritable.class, Point.class);
+        MultipleOutputs.addNamedOutput(job, "finalMeans", TextOutputFormat.class, NullWritable.class, Point.class);
         MultipleOutputs.addNamedOutput(job, "distanceBetweenMeans", TextOutputFormat.class, NullWritable.class, DoubleWritable.class);
         
         // Avoid empty files produced by the reducer due to MultipleOutputs.
