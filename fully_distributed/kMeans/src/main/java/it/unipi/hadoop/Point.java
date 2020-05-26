@@ -55,7 +55,7 @@ public class Point implements WritableComparable {
     
     public double getDistance(Point that){
         if (this.getNumberOfDimensions() != that.getNumberOfDimensions()) {
-            System.err.println("The points " + this.toString() + " " + that.toString() + " have different dimensions. Distance not defined.");
+            System.err.println("The points " + this.toString() + " " + that.toString() + " have different dimensions. The distance is not defined.");
             return -1;
         }
         

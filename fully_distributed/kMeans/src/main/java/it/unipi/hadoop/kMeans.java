@@ -164,7 +164,7 @@ public class kMeans {
         setupConfiguration(localConfig, conf);
         
         try {
-            hdfs = FileSystem.get(URI.create("hdfs://" + localConfig.getNamenode() + ":" + localConfig.getNamenodePort()), conf);
+            hdfs = FileSystem.get(conf);
             cleanWorkspace(conf);
 
             // First step: select the initial random means.

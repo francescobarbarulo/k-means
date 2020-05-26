@@ -7,11 +7,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.ini4j.Wini;
 
 
-public class LocalConfiguration {
-    // [Connection]
-    private String namenode;
-    private String namenodePort; 
-    
+public class LocalConfiguration {    
     // [Dataset]
     private long numberOfPoints;
     private int numberOfDimensions;
@@ -33,9 +29,7 @@ public class LocalConfiguration {
         
         try{
             Wini config = new Wini(new File(configPath));
-            
-            namenode = config.get("Connection", "namenode");
-            namenodePort = config.get("Connection", "port");
+
             numberOfPoints = Long.parseLong(config.get("Dataset", "numberOfPoints"));
             numberOfDimensions = Integer.parseInt(config.get("Dataset", "numberOfDimensions"));
             numberOfClusters = Integer.parseInt(config.get("Dataset", "numberOfClusters"));
@@ -86,14 +80,6 @@ public class LocalConfiguration {
         }
     }
 
-    public String getNamenode() {
-        return namenode;
-    }
-    
-    public String getNamenodePort() {
-        return namenodePort;
-    }
-
     public long getNumberOfPoints() {
         return numberOfPoints;
     }
@@ -135,8 +121,6 @@ public class LocalConfiguration {
     }
      
     public void printConfiguration() {
-        System.out.println("namenode = " + namenode);
-        System.out.println("namenodePort = " + namenodePort);
         System.out.println("numberOfPoints = " + numberOfPoints);
         System.out.println("numberOfDimensions = " + numberOfDimensions);
         System.out.println("numberOfClusters = " + numberOfClusters);
