@@ -162,37 +162,43 @@ public class kMeans {
         
         Configuration conf = new Configuration();
         setupConfiguration(localConfig, conf);
-                
-        hdfs = FileSystem.get(URI.create("hdfs://" + localConfig.getNamenode() + ":" + localConfig.getNamenodePort()), conf);
-        cleanWorkspace(conf);
         
-        // First step: select the initial random means.
-        executeMeansSampling(conf);
-        copyDirectoryFilesWithinHDFS(conf.get("sampledMeans"), conf.get("intermediateMeans"), conf);
-        
-        // Second step: update the means until a stop condition is met.
-        int completedIterations = 0;
-        
-        while (completedIterations < localConfig.getMaximumNumberOfIterations()) {
-            executeKMeansIteration(conf);
- 
-            if (stopConditionMet(conf, completedIterations)) {
-                hdfs.close();
-                return;
+        try {
+            hdfs = FileSystem.get(URI.create("hdfs://" + localConfig.getNamenode() + ":" + localConfig.getNamenodePort()), conf);
+            cleanWorkspace(conf);
+
+            // First step: select the initial random means.
+            executeMeansSampling(conf);
+            copyDirectoryFilesWithinHDFS(conf.get("sampledMeans"), conf.get("intermediateMeans"), conf);
+
+            // Second step: update the means until a stop condition is met.
+            int completedIterations = 0;
+
+            while (completedIterations < localConfig.getMaximumNumberOfIterations()) {
+                executeKMeansIteration(conf);
+
+                if (stopConditionMet(conf, completedIterations)) {
+                    hdfs.close();
+                    return;
+                }
+
+                deleteDirectoryWithinHDFS(conf.get("intermediateMeans"));
+                createDirectoryWithinHDFS(conf.get("intermediateMeans"));
+                copyDirectoryFilesWithinHDFS(conf.get("clusteringFinalMeans") + "/" + conf.get("clusteringFinalMeans_FinalMeans"), conf.get("intermediateMeans"), conf);
+
+                deleteDirectoryWithinHDFS(conf.get("clusteringClosestPoints"));
+                deleteDirectoryWithinHDFS(conf.get("clusteringFinalMeans"));
+                deleteDirectoryWithinHDFS(conf.get("convergence"));
+
+                completedIterations++;
             }
             
-            deleteDirectoryWithinHDFS(conf.get("intermediateMeans"));
-            createDirectoryWithinHDFS(conf.get("intermediateMeans"));
-            copyDirectoryFilesWithinHDFS(conf.get("clusteringFinalMeans") + "/" + conf.get("clusteringFinalMeans_FinalMeans"), conf.get("intermediateMeans"), conf);
-            
-            deleteDirectoryWithinHDFS(conf.get("clusteringClosestPoints"));
-            deleteDirectoryWithinHDFS(conf.get("clusteringFinalMeans"));
-            deleteDirectoryWithinHDFS(conf.get("convergence"));
-
-            completedIterations++;
+            System.out.println("****** Maximum number of iterations reached: " + completedIterations + " ******");
+        } catch (Exception e) {
+            System.err.println(e.getStackTrace());
+        } finally {
+            if (hdfs != null)
+                hdfs.close();
         }
-        
-        System.out.println("****** Maximum number of iterations reached: " + completedIterations + " ******");
-        hdfs.close();
     }
 }
