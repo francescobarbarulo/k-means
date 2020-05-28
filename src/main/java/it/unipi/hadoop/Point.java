@@ -1,6 +1,7 @@
 package it.unipi.hadoop;
 
 import org.apache.hadoop.io.ArrayPrimitiveWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.WritableComparable;
 
 import java.io.DataInput;
@@ -10,37 +11,33 @@ import java.util.Arrays;
 
 /* Multiple Dimension Point custom structure */
 public class Point implements WritableComparable<Point> {
-    private final ArrayPrimitiveWritable vector;
+    private final ArrayPrimitiveWritable coordinates;
 
     public Point(){
-        this.vector = new ArrayPrimitiveWritable();
+        this.coordinates = new ArrayPrimitiveWritable();
     }
 
-    public Point(final int d){
-        this();
-
-        double[] vector = new double[d];
-        Arrays.fill(vector, 0.0);
-        this.vector.set(vector);
+    public void set(final double[] coordinates){
+        this.coordinates.set(coordinates);
     }
 
-    public Point(final double[] vector){
-        this();
-        this.set(vector);
-    }
+    public static Point zeroes(int d){
+        double[] coordinates = new double[d];
+        Arrays.fill(coordinates, 0.0);
 
-    public void set(final double[] vector){
-        this.vector.set(vector);
+        Point p = new Point();
+        p.set(coordinates);
+        return p;
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-        vector.write(out);
+        coordinates.write(out);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-        vector.readFields(in);
+        coordinates.readFields(in);
     }
 
     public static Point parse(String value){
@@ -51,38 +48,44 @@ public class Point implements WritableComparable<Point> {
             coordinates[i] = Double.parseDouble(indicesAndValues[i]);
         }
 
-        return new Point(coordinates);
+        Point p = new Point();
+        p.set(coordinates);
+        return p;
     }
 
     public double getDistance(Point that){
         double sum = 0;
-        double[] thisVector = (double[]) this.vector.get();
-        double[] thatVector = (double[]) that.vector.get();
+        double[] thisCoordinates = (double[]) this.coordinates.get();
+        double[] thatCoordinates = (double[]) that.coordinates.get();
 
-        for (int i = 0; i < thisVector.length; i++){
-            sum += (thisVector[i] - thatVector[i])*(thisVector[i] - thatVector[i]);
+        for (int i = 0; i < thisCoordinates.length; i++){
+            sum += (thisCoordinates[i] - thatCoordinates[i])*(thisCoordinates[i] - thatCoordinates[i]);
         }
 
         return Math.sqrt(sum);
     }
 
     public void add(Point that){
-        double[] thisVector = (double[]) this.vector.get();
-        double[] thatVector = (double[]) that.vector.get();
-        for (int i = 0; i < thisVector.length; i++){
-            thisVector[i] += thatVector[i];
+        double[] thisCoordinates = (double[]) this.coordinates.get();
+        double[] thatCoordinates = (double[]) that.coordinates.get();
+        for (int i = 0; i < thisCoordinates.length; i++){
+            thisCoordinates[i] += thatCoordinates[i];
         }
     }
 
     public void div(int n){
-        double[] tmp = (double[]) this.vector.get();
+        double[] tmp = (double[]) this.coordinates.get();
         for (int i = 0; i < tmp.length; i++){
             tmp[i] /= n;
         }
     }
 
+    public int hashCode(){
+        return new Text(toString()).hashCode();
+    }
+
     public String toString(){
-        double[] tmpDouble = (double[]) this.vector.get();
+        double[] tmpDouble = (double[]) this.coordinates.get();
         String[] tmpStr = new String[tmpDouble.length];
         for (int i = 0; i < tmpStr.length; i++)
             tmpStr[i] = Double.toString(tmpDouble[i]);
@@ -91,14 +94,14 @@ public class Point implements WritableComparable<Point> {
 
     @Override
     public int compareTo(Point that) {
-        double[] thisVector = (double[]) this.vector.get();
-        double[] thatVector = (double[]) that.vector.get();
+        double[] thisCoordinates = (double[]) this.coordinates.get();
+        double[] thatCoordinates = (double[]) that.coordinates.get();
 
-        for (int i = 0; i < thisVector.length; i++){
-            if (thisVector[i] < thatVector[i])
+        for (int i = 0; i < thisCoordinates.length; i++){
+            if (thisCoordinates[i] < thatCoordinates[i])
                 return -1;
 
-            if (thisVector[i] > thatVector[i])
+            if (thisCoordinates[i] > thatCoordinates[i])
                 return 1;
         }
 

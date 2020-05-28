@@ -17,30 +17,62 @@ import java.net.URI;
 import java.util.*;
 
 public class Clustering {
-    public static class ClusteringMapper extends Mapper<LongWritable, Text, Point, Entry> {
+    public static class ClusteringMapper extends Mapper<LongWritable, Text, Point, AccumulatorPoint> {
 
         static int D;
 
-        static Map<Point, Entry> centroidSummation;
+        static Map<Point, AccumulatorPoint> centroidSummation;
 
-        protected void setup(Context context) throws IOException, InterruptedException {
+        protected void setup(Context context) throws IOException {
             Configuration conf = context.getConfiguration();
             D = Integer.parseInt(conf.get("d"));
 
+            /*
+                Prepare the hashmap used to build the in-mapper combiner.
+                The hashmap will contain an entry for each mean as key,
+                and the tuple composed by the summation of the closest points
+                and the number of already summed points:
+                { mean: (sum, n) }
+             */
+
             centroidSummation = new HashMap<>();
 
-            FileSystem fs = FileSystem.get(context.getConfiguration());
-            InputStream is = fs.open(new Path(conf.get("intermediateMeans") + "/part-r-00000"));
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+            /* Get the means from cache, either sampled or computed in the previous step */
+            URI[] cacheFiles = context.getCacheFiles();
+            FileSystem fs = FileSystem.get(conf);
 
-            String line;
-            while ((line = br.readLine()) != null){
-                Point mean = Point.parse(line);
-                centroidSummation.put(mean, new Entry(new Point(D)));
+            for (URI f: cacheFiles) {
+                InputStream is = fs.open(new Path(f));
+                BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+                String line;
+                while ((line = br.readLine()) != null) {
+                    Point mean = Point.parse(line);
+
+                    AccumulatorPoint ap = new AccumulatorPoint();
+                    ap.setValue(Point.zeroes(D));
+
+                    centroidSummation.put(mean, ap);
+                }
+
+                br.close();
             }
         }
 
         public void map(LongWritable key, Text value, Context context) {
+            /*
+                The mapper gets a point and compute the distance between this point
+                and all the means in the hashmap. Once we have the closest mean
+                we can sum the point to the value associated to the mean in the hashmap
+                updating the number of added points.
+                Every mapper will build its own hashmap that will be merged in the reducer.
+                The mapper will emit every mean associated with the the partial sum:
+                {
+                    key: mean
+                    value: (partial sum, size)
+                }
+             */
+
             double minDistance = Double.POSITIVE_INFINITY;
             Point closestMean = null;
 
@@ -54,25 +86,25 @@ public class Clustering {
                 }
             }
 
-            Entry e = centroidSummation.get(closestMean);
-            Point currentCentroidSummation = e.getPoint();
-            int currentValueSummation = e.getValue();
+            AccumulatorPoint ap = centroidSummation.get(closestMean);
+            Point currentCentroidSummation = ap.getValue();
+            int currentSize = ap.getSize();
 
             currentCentroidSummation.add(p);
 
-            e.setPoint(currentCentroidSummation);
-            e.setValue(currentValueSummation + 1);
-            centroidSummation.put(closestMean, e);
+            ap.setValue(currentCentroidSummation);
+            ap.setSize(currentSize + 1);
+            centroidSummation.put(closestMean, ap);
         }
 
         public void cleanup(Context context) throws IOException, InterruptedException {
-            for (Map.Entry<Point, Entry> entry: centroidSummation.entrySet()){
+            for (Map.Entry<Point, AccumulatorPoint> entry: centroidSummation.entrySet()){
                 context.write(entry.getKey(), entry.getValue());
             }
         }
     }
 
-    public static class ClusteringReducer extends Reducer<Point, Entry, NullWritable, Point> {
+    public static class ClusteringReducer extends Reducer<Point, AccumulatorPoint, NullWritable, Point> {
 
         static int D;
 
@@ -81,13 +113,18 @@ public class Clustering {
             D = Integer.parseInt(conf.get("d"));
         }
 
-        public void reduce(Point key, Iterable<Entry> values, Context context) throws IOException, InterruptedException {
-            Point centroid = new Point(D);
+        public void reduce(Point key, Iterable<AccumulatorPoint> values, Context context) throws IOException, InterruptedException {
+            /*
+                For each mean we sum all the partial summation got from different mappers,
+                divide it by the number of summed points and emit the new centroid
+             */
+
+            Point centroid = Point.zeroes(D);
             int n = 0;
 
-            for (Entry e: values){
-                centroid.add(e.getPoint());
-                n += e.getValue();
+            for (AccumulatorPoint ap: values){
+                centroid.add(ap.getValue());
+                n += ap.getSize();
             }
             centroid.div(n);
 
@@ -104,21 +141,18 @@ public class Clustering {
         job.setMapperClass(ClusteringMapper.class);
         job.setReducerClass(ClusteringReducer.class);
 
-        /*
-            TODO -- We can have one reducer per cluster
-            This means that we have multiple part-r-* files in output and we have to manage them.
-        */
-        // job.setNumReduceTasks(K);
+        // We can have one reducer for each mean
+        job.setNumReduceTasks(K);
 
         job.setMapOutputKeyClass(Point.class);
-        job.setMapOutputValueClass(Entry.class);
+        job.setMapOutputValueClass(AccumulatorPoint.class);
 
         job.setOutputKeyClass(NullWritable.class);
         job.setOutputValueClass(Point.class);
 
         // Define input and output path file
         FileInputFormat.addInputPath(job, new Path(conf.get("input")));
-        FileOutputFormat.setOutputPath(job, new Path(conf.get("output")));
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("finalMeans")));
 
         // Exit
         return job.waitForCompletion(true);

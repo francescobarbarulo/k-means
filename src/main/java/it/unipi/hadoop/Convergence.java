@@ -1,7 +1,6 @@
 package it.unipi.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
@@ -24,22 +23,50 @@ public class Convergence {
         Map<Point, Double> distance;
         final static DoubleWritable outputValue = new DoubleWritable();
 
-        protected void setup(Context context) throws IOException, InterruptedException {
+        public void setup(Context context) throws IOException {
             Configuration conf = context.getConfiguration();
+
+            /*
+                Prepare the hashmap for the in-mapper combiner.
+                The hashmap will contain an entry for each final centroid as key,
+                and the summation of the distances between it and the closest points
+                that belong to the cluster:
+                { mean: distance }
+             */
+
             distance = new HashMap<>();
 
-            FileSystem fs = FileSystem.get(context.getConfiguration());
-            InputStream is = fs.open(new Path(conf.get("output") + "/part-r-00000"));
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+            URI[] cacheFiles = context.getCacheFiles();
+            FileSystem fs = FileSystem.get(conf);
 
-            String line;
-            while ((line = br.readLine()) != null){
-                Point mean = Point.parse(line);
-                distance.put(mean, 0.0);
+            for (URI f: cacheFiles) {
+                System.out.println(f.toString());
+                InputStream is = fs.open(new Path(f));
+                BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+                String line;
+                while ((line = br.readLine()) != null) {
+                    Point mean = Point.parse(line);
+                    distance.put(mean, 0.0);
+                }
+
+                br.close();
             }
         }
 
         public void map(LongWritable key, Text value, Context context) {
+            /*
+                The mapper gets a point and search for the closest mean.
+                Then it sums the distance between them to the
+                current value of the distance.
+                The mapper will emit every mean with the sum of the distances
+                with the point of the cluster:
+                {
+                    key: mean
+                    value: distance
+                }
+             */
+
             double minDistance = Double.POSITIVE_INFINITY;
             Point closestMean = null;
 
@@ -53,8 +80,7 @@ public class Convergence {
                 }
             }
 
-            double currentDistance = distance.get(closestMean);
-            distance.put(closestMean, currentDistance + minDistance);
+            distance.put(closestMean, distance.get(closestMean) + minDistance);
         }
 
         public void cleanup(Context context) throws IOException, InterruptedException {
@@ -74,7 +100,11 @@ public class Convergence {
             sum = 0.0;
         }
 
-        public void reduce(Point key, Iterable<DoubleWritable> values, Context context) throws IOException, InterruptedException {
+        public void reduce(Point key, Iterable<DoubleWritable> values, Context context) {
+            /*
+                The reducer sums up all the distances related to a mean got by key.
+                The sum represents the convergence error.
+             */
             for (DoubleWritable value: values)
                 sum += value.get();
         }
@@ -105,7 +135,7 @@ public class Convergence {
 
         // Define input and output path file
         FileInputFormat.addInputPath(job, new Path(conf.get("input")));
-        FileOutputFormat.setOutputPath(job, new Path(conf.get("error")));
+        FileOutputFormat.setOutputPath(job, new Path(conf.get("convergence")));
 
         // Exit
         return job.waitForCompletion(true);

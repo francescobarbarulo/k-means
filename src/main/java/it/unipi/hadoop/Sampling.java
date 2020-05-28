@@ -20,27 +20,25 @@ import java.util.Random;
 public class Sampling {
 
     public static class SamplingMapper extends Mapper<LongWritable, Text, IntWritable, Point> {
-        /*
-            N : total number of points
-            K : number of clusters
-         */
-        static int N, K;
+        static int K;
 
-        final static Random rand = new Random(0);
+        final static Random rand = new Random();
         final static IntWritable outputKey = new IntWritable();
 
         /* In-Mapper Combiner: emit at most K points stored in the PriorityQueue */
-        static PriorityQueue<Entry> pq = new PriorityQueue<>();
+        static PriorityQueue<PriorityPoint> pq = new PriorityQueue<>();
 
         public void setup(Context context){
             Configuration conf = context.getConfiguration();
-            N = Integer.parseInt(conf.get("n"));
             K = Integer.parseInt(conf.get("k"));
+            rand.setSeed(Long.parseLong(conf.get("seed")));
         }
 
         public void map(LongWritable key, Text value, Context context) {
-            Entry e = new Entry(rand.nextInt(N), Point.parse(value.toString()));
-            pq.add(e);
+            PriorityPoint pp = new PriorityPoint();
+            pp.setPriority(rand.nextInt());
+            pp.setPoint(Point.parse(value.toString()));
+            pq.add(pp);
 
             /* Keep the queue size up to K */
             if (pq.size() > K)
@@ -49,12 +47,12 @@ public class Sampling {
 
         public void cleanup(Context context) throws IOException, InterruptedException {
             /*
-                key   : a random value between 0 and N (total number of points)
+                key   : a random value
                 value : the point
             */
-            for (Entry e: pq){
-                outputKey.set(e.getValue());
-                context.write(outputKey, e.getPoint());
+            for (PriorityPoint pp: pq){
+                outputKey.set(pp.getPriority());
+                context.write(outputKey, pp.getPoint());
             }
         }
     }

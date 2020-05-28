@@ -1,44 +1,70 @@
 package it.unipi.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.FileUtil;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.util.GenericOptionsParser;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 
 public class kMeans {
 
-    public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
-        Configuration conf = new Configuration();
-        String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
+    static Configuration conf;
+    static FileSystem fs;
 
-        if (otherArgs.length != 5){
-            System.err.println("Usage: hadoop jar target/kMeans-1.0-SNAPSHOT.jar it.unipi.hadoop.kMeans <n> <d> <k> <in> <out>");
+    public static void cleanWorkspace() throws IOException {
+        fs.delete(new Path(conf.get("finalMeans")), true);
+        fs.delete(new Path(conf.get("convergence")), true);
+    }
+
+    public static void copy(Path srcPath, Path dstPath) throws IOException {
+        RemoteIterator<LocatedFileStatus> fileIter = fs.listFiles(srcPath, true);
+        while (fileIter.hasNext()){
+            FileUtil.copy(fs, fileIter.next(), fs, dstPath, false, true, conf);
+        }
+    }
+
+    public static void addCacheDirectory(Path dir, Job job) throws IOException {
+        RemoteIterator<LocatedFileStatus> fileIter = fs.listFiles(dir, true);
+        while(fileIter.hasNext()) {
+            job.addCacheFile(fileIter.next().getPath().toUri());
+        }
+    }
+
+    public static double getConvergenceError() throws IOException {
+        double err;
+        InputStream is = fs.open(new Path(conf.get("convergence") + "/part-r-00000"));
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+        String line;
+        if ((line = br.readLine()) == null ) {
+            br.close();
+            fs.close();
             System.exit(1);
         }
 
-        System.out.println("n=" + otherArgs[0]);
-        System.out.println("d=" + otherArgs[1]);
-        System.out.println("k=" + otherArgs[2]);
-        System.out.println("input=" + otherArgs[3]);
-        System.out.println("output=" + otherArgs[4]);
+        err = Double.parseDouble(line);
+        br.close();
+        return err;
+    }
 
-        conf.set("n", otherArgs[0]);                    // number of points
-        conf.set("d", otherArgs[1]);                    // point space dimensions
-        conf.set("k", otherArgs[2]);                    // number of means
-        conf.set("input", otherArgs[3]);                // points
-        conf.set("output", otherArgs[4]);               // centroids
-        conf.set("sampledMeans", "sampled");            // sampled means
-        conf.set("intermediateMeans", "tmp");           // tmp folder
-        conf.set("error", "error");                     // convergence error
+    public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
+        conf = new Configuration();
+        LocalConfiguration localConfig = new LocalConfiguration("config.ini");
+        localConfig.printConfiguration();
 
-        FileSystem fs = FileSystem.get(conf);
+        String BASE_DIR = localConfig.getOutputPath() + "/";
+
+        conf.setLong("seed", localConfig.getSeedRNG());
+        conf.setInt("d", localConfig.getNumberOfDimensions());
+        conf.setInt("k", localConfig.getNumberOfClusters());
+        conf.set("input", localConfig.getInputPath());
+        conf.set("sampledMeans", BASE_DIR + "sampled-means");
+        conf.set("intermediateMeans", BASE_DIR + "intermediate-means");
+        conf.set("finalMeans", BASE_DIR + "final-means");
+        conf.set("convergence", BASE_DIR + "convergence");
+
+        fs = FileSystem.get(conf);
+        fs.delete(new Path(BASE_DIR), true);
 
         /*  (*
             # Sampling
@@ -46,10 +72,11 @@ public class kMeans {
             - output: k sampled points
          */
 
-        fs.delete(new Path(conf.get("sampledMeans")), true);
-
         Job sampling = Job.getInstance(conf, "sampling means");
-        if ( !Sampling.main(sampling) ) System.exit(1);
+        if ( !Sampling.main(sampling) ) {
+            fs.close();
+            System.exit(1);
+        }
 
         /* *) */
 
@@ -60,53 +87,53 @@ public class kMeans {
         do {
             prev_err = err;
 
-            Path srcPath = (step == 0) ? new Path(conf.get("sampledMeans") + "/part-r-00000") : new Path(conf.get("output") + "/part-r-00000");
-            Path dstPath =  new Path(conf.get("intermediateMeans") + "/part-r-00000");
-            FileUtil.copy(fs, srcPath, fs, dstPath, false, true, conf);
+            Path srcPath = (step == 0) ? new Path(conf.get("sampledMeans")) : new Path(conf.get("finalMeans"));
+            Path dstPath = new Path(conf.get("intermediateMeans"));
+
+            fs.mkdirs(dstPath);
+            copy(srcPath, dstPath);
+
+            cleanWorkspace();
 
             /*
                 (*
                 # Clustering
                 - input : points + intermediate means (cache)
-                - output: new centroids
+                - output: new centroids (final-means/)
             */
-            /* We can get rid of previous centroids because we are going to compute new ones */
-            fs.delete(new Path(conf.get("output")), true);
 
             Job clustering = Job.getInstance(conf, "clustering");
-            clustering.addCacheFile(new Path(conf.get("intermediateMeans") + "/part-r-00000").toUri());
-            if ( !Clustering.main(clustering) ) System.exit(1);
+            addCacheDirectory(new Path(conf.get("intermediateMeans")), clustering);
+            if ( !Clustering.main(clustering) ) {
+                fs.close();
+                System.exit(1);
+            }
 
             /* *) */
 
             /*  (*
                 # Convergence:
                 - input : points + actual centroids (cache)
-                - output: convergence error
+                - output: convergence error (convergence/)
              */
-            /* We can get rid of previous centroids because we are going to compute new ones */
-            fs.delete(new Path(conf.get("error")), true);
 
             Job convergence = Job.getInstance(conf, "convergence");
-            convergence.addCacheFile(new Path(conf.get("output") + "/part-r-00000").toUri());
-            if ( !Convergence.main(convergence) ) System.exit(1);
+            addCacheDirectory(new Path(conf.get("finalMeans")), convergence);
+            if ( !Convergence.main(convergence) ) {
+                fs.close();
+                System.exit(1);
+            }
 
             /* *) */
 
-            /* (*  Read the convergence error  */
+            err = getConvergenceError();
 
-            InputStream is = fs.open(new Path(conf.get("error") + "/part-r-00000"));
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
-
-            String line;
-            if ((line = br.readLine()) == null ) { System.exit(1); }
-
-            err = Double.parseDouble(line);
             System.out.printf("\nSTEP: %d - PREV_ERR: %f - ERR: %f - CHANGE: %.2f%%\n\n", step, prev_err, err, (prev_err - err)/prev_err * 100);
-
-            /* *) */
 
             step++;
         } while (prev_err == Double.POSITIVE_INFINITY || (prev_err - err)/prev_err > 0.01); // error changing in 1%
+
+        fs.close();
+
     }
 }
