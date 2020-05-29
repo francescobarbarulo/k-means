@@ -70,6 +70,7 @@ def main():
         last_objective_function = objective_function
         completed_iterations += 1
 
+    spark_context.stop()
     print("****** Maximum number of iterations reached: " + str(completed_iterations) + " ******")
 
 
