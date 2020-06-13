@@ -1,24 +1,30 @@
 package it.unipi.hadoop;
 
-import org.apache.hadoop.io.ArrayPrimitiveWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.WritableComparable;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /* Multiple Dimension Point custom structure */
+
 public class Point implements WritableComparable<Point> {
-    private final ArrayPrimitiveWritable coordinates;
+    private ArrayList<Double> coordinates;
 
     public Point(){
-        this.coordinates = new ArrayPrimitiveWritable();
+        this.coordinates = new ArrayList<>();
     }
 
     public void set(final double[] coordinates){
-        this.coordinates.set(coordinates);
+        for (Double c: coordinates)
+            this.coordinates.add(c);
+    }
+
+    public ArrayList<Double> get(){
+        return coordinates;
     }
 
     public static Point zeroes(int d){
@@ -28,16 +34,6 @@ public class Point implements WritableComparable<Point> {
         Point p = new Point();
         p.set(coordinates);
         return p;
-    }
-
-    @Override
-    public void write(DataOutput out) throws IOException {
-        coordinates.write(out);
-    }
-
-    @Override
-    public void readFields(DataInput in) throws IOException {
-        coordinates.readFields(in);
     }
 
     public static Point parse(String value){
@@ -55,28 +51,28 @@ public class Point implements WritableComparable<Point> {
 
     public double getDistance(Point that){
         double sum = 0;
-        double[] thisCoordinates = (double[]) this.coordinates.get();
-        double[] thatCoordinates = (double[]) that.coordinates.get();
+        ArrayList<Double> thisCoordinates = this.get();
+        ArrayList<Double> thatCoordinates = that.get();
 
-        for (int i = 0; i < thisCoordinates.length; i++){
-            sum += (thisCoordinates[i] - thatCoordinates[i])*(thisCoordinates[i] - thatCoordinates[i]);
+        for (int i = 0; i < thisCoordinates.size(); i++){
+            sum += (thisCoordinates.get(i) - thatCoordinates.get(i))*(thisCoordinates.get(i) - thatCoordinates.get(i));
         }
 
         return Math.sqrt(sum);
     }
 
     public void add(Point that){
-        double[] thisCoordinates = (double[]) this.coordinates.get();
-        double[] thatCoordinates = (double[]) that.coordinates.get();
-        for (int i = 0; i < thisCoordinates.length; i++){
-            thisCoordinates[i] += thatCoordinates[i];
+        ArrayList<Double> thisCoordinates = this.get();
+        ArrayList<Double> thatCoordinates = that.get();
+
+        for (int i = 0; i < thisCoordinates.size(); i++){
+            thisCoordinates.set(i, thisCoordinates.get(i) + thatCoordinates.get(i));
         }
     }
 
     public void div(int n){
-        double[] tmp = (double[]) this.coordinates.get();
-        for (int i = 0; i < tmp.length; i++){
-            tmp[i] /= n;
+        for (int i = 0; i < coordinates.size(); i++){
+            coordinates.set(i, coordinates.get(i)/n);
         }
     }
 
@@ -85,23 +81,38 @@ public class Point implements WritableComparable<Point> {
     }
 
     public String toString(){
-        double[] tmpDouble = (double[]) this.coordinates.get();
-        String[] tmpStr = new String[tmpDouble.length];
-        for (int i = 0; i < tmpStr.length; i++)
-            tmpStr[i] = Double.toString(tmpDouble[i]);
-        return String.join(",", tmpStr);
+        String[] tmp = new String[coordinates.size()];
+        for (int i = 0; i < tmp.length; i++)
+            tmp[i] = Double.toString(coordinates.get(i));
+        return String.join(",", tmp);
+    }
+
+    @Override
+    public void write(DataOutput out) throws IOException {
+        out.writeInt(coordinates.size());
+        for (Double c: coordinates)
+            out.writeDouble(c);
+    }
+
+    @Override
+    public void readFields(DataInput in) throws IOException {
+        int size = in.readInt();
+
+        coordinates = new ArrayList<>();
+        for (int i = 0; i < size; i++)
+            coordinates.add(in.readDouble());
     }
 
     @Override
     public int compareTo(Point that) {
-        double[] thisCoordinates = (double[]) this.coordinates.get();
-        double[] thatCoordinates = (double[]) that.coordinates.get();
+        ArrayList<Double> thisCoordinates = this.get();
+        ArrayList<Double> thatCoordinates = that.get();
 
-        for (int i = 0; i < thisCoordinates.length; i++){
-            if (thisCoordinates[i] < thatCoordinates[i])
+        for (int i = 0; i < thisCoordinates.size(); i++){
+            if (thisCoordinates.get(i) < thatCoordinates.get(i))
                 return -1;
 
-            if (thisCoordinates[i] > thatCoordinates[i])
+            if (thisCoordinates.get(i) > thatCoordinates.get(i))
                 return 1;
         }
 

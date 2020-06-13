@@ -29,7 +29,7 @@ public class Clustering {
 
             /*
                 Prepare the hashmap used to build the in-mapper combiner.
-                The hashmap will contain an entry for each mean as key,
+                The hashmap will contain an entry for each mean
                 and the tuple composed by the summation of the closest points
                 and the number of already summed points:
                 { mean: (sum, n) }
@@ -78,6 +78,11 @@ public class Clustering {
 
             Point p = Point.parse(value.toString());
 
+            /*
+                Compute the distance between point p and all the means
+                in order to find the closest mean
+             */
+
             for (Point m: centroidSummation.keySet()){
                 double d = p.getDistance(m);
                 if (d < minDistance){
@@ -85,6 +90,11 @@ public class Clustering {
                     closestMean = m;
                 }
             }
+
+            /*
+                Once we got the closest mean, we update the value of
+                the associated sum adding point p belonging to the cluster
+             */
 
             AccumulatorPoint ap = centroidSummation.get(closestMean);
             Point currentCentroidSummation = ap.getValue();
@@ -141,7 +151,7 @@ public class Clustering {
         job.setMapperClass(ClusteringMapper.class);
         job.setReducerClass(ClusteringReducer.class);
 
-        // We can have one reducer for each mean
+        // The best solution would be having one reducer per mean
         job.setNumReduceTasks(K);
 
         job.setMapOutputKeyClass(Point.class);
