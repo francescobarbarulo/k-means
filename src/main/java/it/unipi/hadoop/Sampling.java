@@ -24,6 +24,7 @@ public class Sampling {
 
         final static Random rand = new Random();
         final static IntWritable outputKey = new IntWritable();
+        final static Point outputValue = new Point();
 
         /* In-Mapper Combiner: emit at most K points stored in the PriorityQueue */
         static PriorityQueue<PriorityPoint> pq = new PriorityQueue<>();
@@ -35,10 +36,7 @@ public class Sampling {
         }
 
         public void map(LongWritable key, Text value, Context context) {
-            PriorityPoint pp = new PriorityPoint();
-            pp.setPriority(rand.nextInt());
-            pp.setPoint(Point.parse(value.toString()));
-            pq.add(pp);
+            pq.add(new PriorityPoint(rand.nextInt(), value.toString()));
 
             /* Keep the queue size up to K */
             if (pq.size() > K)
@@ -52,7 +50,8 @@ public class Sampling {
             */
             for (PriorityPoint pp: pq){
                 outputKey.set(pp.getPriority());
-                context.write(outputKey, pp.getPoint());
+                outputValue.set(pp.getCoordinates());
+                context.write(outputKey, outputValue);
             }
         }
     }

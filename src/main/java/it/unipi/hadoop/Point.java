@@ -7,52 +7,44 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 /* Multiple Dimension Point custom structure */
 
-public class Point implements WritableComparable<Point> {
+public class Point implements WritableComparable<Object> {
     private ArrayList<Double> coordinates;
 
     public Point(){
         this.coordinates = new ArrayList<>();
     }
 
-    public void set(final double[] coordinates){
-        for (Double c: coordinates)
-            this.coordinates.add(c);
-    }
+    public Point(String value){
+        this();
 
-    public ArrayList<Double> get(){
-        return coordinates;
-    }
-
-    public static Point zeroes(int d){
-        double[] coordinates = new double[d];
-        Arrays.fill(coordinates, 0.0);
-
-        Point p = new Point();
-        p.set(coordinates);
-        return p;
-    }
-
-    public static Point parse(String value){
         String[] indicesAndValues = value.split(",");
-
-        double[] coordinates = new double[indicesAndValues.length];
-        for (int i = 0; i < coordinates.length; i++) {
-            coordinates[i] = Double.parseDouble(indicesAndValues[i]);
+        for (String v: indicesAndValues) {
+            coordinates.add(Double.parseDouble(v));
         }
+    }
 
-        Point p = new Point();
-        p.set(coordinates);
-        return p;
+    public Point(int d){
+        this();
+
+        for (int i = 0; i < d; i++)
+            coordinates.add(0.0);
+    }
+
+    public void set(ArrayList<Double> coordinates){
+        this.coordinates = coordinates;
+    }
+
+    public ArrayList<Double> getCoordinates(){
+        return coordinates;
     }
 
     public double getDistance(Point that){
         double sum = 0;
-        ArrayList<Double> thisCoordinates = this.get();
-        ArrayList<Double> thatCoordinates = that.get();
+        ArrayList<Double> thisCoordinates = this.getCoordinates();
+        ArrayList<Double> thatCoordinates = that.getCoordinates();
 
         for (int i = 0; i < thisCoordinates.size(); i++){
             sum += (thisCoordinates.get(i) - thatCoordinates.get(i))*(thisCoordinates.get(i) - thatCoordinates.get(i));
@@ -62,8 +54,8 @@ public class Point implements WritableComparable<Point> {
     }
 
     public void add(Point that){
-        ArrayList<Double> thisCoordinates = this.get();
-        ArrayList<Double> thatCoordinates = that.get();
+        ArrayList<Double> thisCoordinates = this.getCoordinates();
+        ArrayList<Double> thatCoordinates = that.getCoordinates();
 
         for (int i = 0; i < thisCoordinates.size(); i++){
             thisCoordinates.set(i, thisCoordinates.get(i) + thatCoordinates.get(i));
@@ -104,9 +96,9 @@ public class Point implements WritableComparable<Point> {
     }
 
     @Override
-    public int compareTo(Point that) {
-        ArrayList<Double> thisCoordinates = this.get();
-        ArrayList<Double> thatCoordinates = that.get();
+    public int compareTo(Object o) {
+        ArrayList<Double> thisCoordinates = this.getCoordinates();
+        ArrayList<Double> thatCoordinates = ((Point)o).getCoordinates();
 
         for (int i = 0; i < thisCoordinates.size(); i++){
             if (thisCoordinates.get(i) < thatCoordinates.get(i))

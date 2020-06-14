@@ -1,53 +1,49 @@
 package it.unipi.hadoop;
 
-import org.apache.hadoop.io.Writable;
+/*
+    This is used in clustering for the partial sum of points
+    with the number of accumulated points (size)
+ */
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
 
-/*
-    This is used in clustering for accumulating Point values (value)
-    with the number of accumulated points (size)
- */
-
-public class AccumulatorPoint implements Writable {
+public class AccumulatorPoint extends Point {
     private int size;
-    private Point value;
 
     public AccumulatorPoint(){
-        this.value = new Point();
+        super();
+    }
+
+    public AccumulatorPoint(int d){
+        super(d);
+        size = 0;
     }
 
     public int getSize() {
         return size;
     }
 
-    public Point getValue() {
-        return value;
+    public void add(Point that){
+        super.add(that);
+        size++;
     }
 
-    public void setValue(Point value){
-        this.value = value;
-    }
-
-    public void setSize(int size) {
-        this.size = size;
+    public String toString(){
+        return super.toString() + " " + this.size;
     }
 
     @Override
     public void write(DataOutput out) throws IOException {
-        this.value.write(out);
-        out.writeInt(this.size);
+        super.write(out);
+        out.writeInt(size);
     }
 
     @Override
     public void readFields(DataInput in) throws IOException {
-        this.value.readFields(in);
-        this.size = in.readInt();
-    }
-
-    public String toString(){
-        return this.value.toString() + " " + this.size;
+        super.readFields(in);
+        size = in.readInt();
     }
 }

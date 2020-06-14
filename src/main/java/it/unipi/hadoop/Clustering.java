@@ -47,12 +47,8 @@ public class Clustering {
 
                 String line;
                 while ((line = br.readLine()) != null) {
-                    Point mean = Point.parse(line);
-
-                    AccumulatorPoint ap = new AccumulatorPoint();
-                    ap.setValue(Point.zeroes(D));
-
-                    centroidSummation.put(mean, ap);
+                    Point mean = new Point(line);
+                    centroidSummation.put(mean, new AccumulatorPoint(D));
                 }
 
                 br.close();
@@ -76,7 +72,7 @@ public class Clustering {
             double minDistance = Double.POSITIVE_INFINITY;
             Point closestMean = null;
 
-            Point p = Point.parse(value.toString());
+            Point p = new Point(value.toString());
 
             /*
                 Compute the distance between point p and all the means
@@ -97,13 +93,7 @@ public class Clustering {
              */
 
             AccumulatorPoint ap = centroidSummation.get(closestMean);
-            Point currentCentroidSummation = ap.getValue();
-            int currentSize = ap.getSize();
-
-            currentCentroidSummation.add(p);
-
-            ap.setValue(currentCentroidSummation);
-            ap.setSize(currentSize + 1);
+            ap.add(p);
             centroidSummation.put(closestMean, ap);
         }
 
@@ -129,11 +119,11 @@ public class Clustering {
                 divide it by the number of summed points and emit the new centroid
              */
 
-            Point centroid = Point.zeroes(D);
+            Point centroid = new Point(D);
             int n = 0;
 
             for (AccumulatorPoint ap: values){
-                centroid.add(ap.getValue());
+                centroid.add(ap);
                 n += ap.getSize();
             }
             centroid.div(n);

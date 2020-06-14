@@ -46,7 +46,7 @@ public class Convergence {
 
                 String line;
                 while ((line = br.readLine()) != null) {
-                    Point mean = Point.parse(line);
+                    Point mean = new Point(line);
                     distance.put(mean, 0.0);
                 }
 
@@ -70,7 +70,7 @@ public class Convergence {
             double minDistance = Double.POSITIVE_INFINITY;
             Point closestMean = null;
 
-            Point p = Point.parse(value.toString());
+            Point p = new Point(value.toString());
 
             for (Point m: distance.keySet()){
                 double d = p.getDistance(m);
