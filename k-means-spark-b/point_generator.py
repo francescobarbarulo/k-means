@@ -24,34 +24,22 @@ class Circle:
 
 
 if __name__ == '__main__':
-    num_samples = 300
-    center_x, center_y = 25, 75
+    num_samples = 100
+    centers = [[25, 75], [50, 25], [75, 75]]
     origin = Point(0, 0)
     radius = 20
+
+    values = np.empty(shape=(0, 2), dtype=float)
     circle = Circle(origin, radius)
-    values = np.empty(shape=(num_samples, 2), dtype=float)
-    for i in range(0, int(num_samples/3)):
-        p = random.random() * 2 * math.pi
-        r = circle.radius * math.sqrt(random.random())
-        x, y = math.cos(p) * r + center_x, math.sin(p) * r + center_y
-        values[i] = np.array([x, y])
-
-    center_x, center_y = 50, 25
-
-    for j in range(int(num_samples/3), 2 * int(num_samples/3)):
-        p = random.random() * 2 * math.pi
-        r = circle.radius * math.sqrt(random.random())
-        x, y = math.cos(p) * r + center_x, math.sin(p) * r + center_y
-        values[j] = np.array([x, y])
-
-    center_x, center_y = 75, 75
-
-    for j in range(2 * int(num_samples / 3), num_samples):
-        p = random.random() * 2 * math.pi
-        r = circle.radius * math.sqrt(random.random())
-        x, y = math.cos(p) * r + center_x, math.sin(p) * r + center_y
-        values[j] = np.array([x, y])
+    for center in centers:
+        center_x, center_y = center
+        for i in range(0, 100):
+            p = random.random() * 2 * math.pi
+            r = circle.radius * math.sqrt(random.random())
+            x, y = math.cos(p) * r + center_x, math.sin(p) * r + center_y
+            values = np.concatenate((values, np.array([[x, y]], dtype=float)), axis=0)
 
     PLotUtil.plot_list(values)
     PLotUtil.show()
     np.savetxt("pts_in_circles.txt", values, delimiter=",", fmt="%s")
+
