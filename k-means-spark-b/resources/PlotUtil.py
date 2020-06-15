@@ -34,6 +34,7 @@ class PLotUtil:
         plt.show()
 
     '''Plotting error values'''
+
     @staticmethod
     def plot(values):
         plt.plot(values)

@@ -22,9 +22,9 @@ stop_err_level = 0.0000001
 iteration_max = 110
 iteration_min = 100
 
-pointstxt = sc.textFile(input_f)
-points = pointstxt.map(lambda x: x.split(",")).map(lambda x: np.array(x, dtype=float))
-starting_means = points.takeSample(num=mean_number, withReplacement=False, seed=0)
+points_txt = sc.textFile(input_f)
+points = points_txt.map(lambda x: x.split(",")).map(lambda x: np.array(x, dtype=float))
+starting_means = points.takeSample(num=mean_number, withReplacement=False)
 X = points.collect()
 sc.stop()
 x, y = [], []
