@@ -73,7 +73,7 @@ public class Convergence {
             Point p = new Point(value.toString());
 
             for (Point m: distance.keySet()){
-                double d = p.getDistance(m);
+                double d = p.getSquaredDistance(m);
                 if (d < minDistance){
                     minDistance = d;
                     closestMean = m;
@@ -130,6 +130,7 @@ public class Convergence {
         // Set key-value output format
         job.setMapOutputKeyClass(Point.class);
         job.setMapOutputValueClass(DoubleWritable.class);
+
         job.setOutputKeyClass(NullWritable.class);
         job.setOutputValueClass(DoubleWritable.class);
 

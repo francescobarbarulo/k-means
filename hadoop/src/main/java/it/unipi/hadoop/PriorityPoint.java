@@ -18,7 +18,6 @@ public class PriorityPoint extends Point implements Comparable<Object> {
     }
 
     public int compareTo(Object o) {
-        // TODO -- decide priority rule: the lower the value, the higher the priority or viceversa?
         return Integer.compare(((PriorityPoint)o).priority, this.priority);
     }
 

@@ -41,7 +41,7 @@ public class Point implements WritableComparable<Object> {
         return coordinates;
     }
 
-    public double getDistance(Point that){
+    public double getSquaredDistance(Point that){
         double sum = 0;
         ArrayList<Double> thisCoordinates = this.getCoordinates();
         ArrayList<Double> thatCoordinates = that.getCoordinates();
@@ -50,7 +50,7 @@ public class Point implements WritableComparable<Object> {
             sum += (thisCoordinates.get(i) - thatCoordinates.get(i))*(thisCoordinates.get(i) - thatCoordinates.get(i));
         }
 
-        return Math.sqrt(sum);
+        return sum;
     }
 
     public void add(Point that){

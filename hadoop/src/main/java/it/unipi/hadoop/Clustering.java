@@ -80,7 +80,7 @@ public class Clustering {
              */
 
             for (Point m: centroidSummation.keySet()){
-                double d = p.getDistance(m);
+                double d = p.getSquaredDistance(m);
                 if (d < minDistance){
                     minDistance = d;
                     closestMean = m;
