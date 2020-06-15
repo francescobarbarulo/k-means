@@ -135,6 +135,7 @@ public class Clustering {
     public static boolean main(Job job) throws IOException, ClassNotFoundException, InterruptedException {
         Configuration conf = job.getConfiguration();
         int K = Integer.parseInt(conf.get("k"));
+        int numReduceTasks = Math.min(K, Integer.parseInt(conf.get("maxNumberOfReduceTasks")));
 
         job.setJarByClass(Clustering.class);
 
@@ -142,7 +143,7 @@ public class Clustering {
         job.setReducerClass(ClusteringReducer.class);
 
         // The best solution would be having one reducer per mean
-        job.setNumReduceTasks(K);
+        job.setNumReduceTasks(numReduceTasks);
 
         job.setMapOutputKeyClass(Point.class);
         job.setMapOutputValueClass(AccumulatorPoint.class);

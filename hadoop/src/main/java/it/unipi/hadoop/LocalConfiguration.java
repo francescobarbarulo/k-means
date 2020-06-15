@@ -8,7 +8,6 @@ import org.ini4j.Wini;
 
 public class LocalConfiguration {
     // [Dataset]
-    private long numberOfPoints;
     private int numberOfDimensions;
     private int numberOfClusters;
     private String inputPath;
@@ -17,8 +16,8 @@ public class LocalConfiguration {
     // [K-means]
     private int seedRNG;
     private int clusteringNumberOfReduceTasks;
-    private double distanceThreshold;
-    private int maximumNumberOfIterations;
+    private double errorThreshold;
+    private int maxNumberOfIterations;
 
     // [Hadoop]
     private boolean verbose;
@@ -35,9 +34,9 @@ public class LocalConfiguration {
             inputPath = config.get("Dataset", "inputPath");
             outputPath = config.get("Dataset", "outputPath");
             seedRNG = Integer.parseInt(config.get("K-means", "seedRNG"));
-            //clusteringNumberOfReduceTasks = Integer.parseInt(config.get("K-means", "numberOfReduceTasks"));
-            //distanceThreshold = Double.parseDouble(config.get("K-means", "distanceThreshold"));
-            //maximumNumberOfIterations = Integer.parseInt(config.get("K-means", "maximumNumberOfIterations"));
+            clusteringNumberOfReduceTasks = Integer.parseInt(config.get("K-means", "maxNumberOfReduceTasks"));
+            errorThreshold = Double.parseDouble(config.get("K-means", "errorThreshold"));
+            maxNumberOfIterations = Integer.parseInt(config.get("K-means", "maxNumberOfIterations"));
             verbose = Boolean.parseBoolean(config.get("Hadoop", "verbose"));
 
             //validateConfiguration();
@@ -48,11 +47,6 @@ public class LocalConfiguration {
     }
 
     private void validateConfiguration() {
-        if (numberOfPoints <= 0) {
-            System.err.println("LocalConfiguration validation error: the number of points must be greater than 0");
-            System.exit(1);
-        }
-
         if (numberOfDimensions <= 0) {
             System.err.println("LocalConfiguration validation error: the number of dimensions must be greater than 0");
             System.exit(1);
@@ -68,19 +62,15 @@ public class LocalConfiguration {
             System.exit(1);
         }
 
-        if (distanceThreshold < 0) {
+        if (errorThreshold < 0) {
             System.err.println("LocalConfiguration validation error: the error threshold must be greater than or equal to 0");
             System.exit(1);
         }
 
-        if (maximumNumberOfIterations <= 0) {
+        if (maxNumberOfIterations <= 0) {
             System.err.println("LocalConfiguration validation error: the number of iterations must be greater than 0");
             System.exit(1);
         }
-    }
-
-    public long getNumberOfPoints() {
-        return numberOfPoints;
     }
 
     public int getNumberOfDimensions() {
@@ -103,16 +93,16 @@ public class LocalConfiguration {
         return seedRNG;
     }
 
-    public int getClusteringNumberOfReduceTasks() {
+    public int getClusteringNumberOfReducers() {
         return clusteringNumberOfReduceTasks;
     }
 
-    public double getDistanceThreshold() {
-        return distanceThreshold;
+    public double getErrorThreshold() {
+        return errorThreshold;
     }
 
-    public int getMaximumNumberOfIterations() {
-        return maximumNumberOfIterations;
+    public int getMaxNumberOfIterations() {
+        return maxNumberOfIterations;
     }
 
     public boolean getVerbose() {
@@ -120,15 +110,14 @@ public class LocalConfiguration {
     }
 
     public void printConfiguration() {
-        System.out.println("numberOfPoints = " + numberOfPoints);
         System.out.println("numberOfDimensions = " + numberOfDimensions);
         System.out.println("numberOfClusters = " + numberOfClusters);
         System.out.println("inputPath = " + inputPath);
         System.out.println("outputPath = " + outputPath);
         System.out.println("seedRNG = " + seedRNG);
         System.out.println("clusteringNumberOfReduceTasks = " + clusteringNumberOfReduceTasks);
-        System.out.println("distanceThreshold = " + distanceThreshold);
-        System.out.println("maximumNumberOfIterations = " + maximumNumberOfIterations);
+        System.out.println("distanceThreshold = " + errorThreshold);
+        System.out.println("maximumNumberOfIterations = " + maxNumberOfIterations);
         System.out.println("verbose = " + String.valueOf(verbose));
         System.out.println("");
     }

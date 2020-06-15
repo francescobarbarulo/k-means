@@ -11,6 +11,9 @@ public class kMeans {
     static Configuration conf;
     static FileSystem fs;
 
+    static int maxNumberOfIterations;
+    static double errorThreshold;
+
     public static void cleanWorkspace() throws IOException {
         fs.delete(new Path(conf.get("finalMeans")), true);
         fs.delete(new Path(conf.get("convergence")), true);
@@ -52,11 +55,15 @@ public class kMeans {
         LocalConfiguration localConfig = new LocalConfiguration("config.ini");
         localConfig.printConfiguration();
 
+        maxNumberOfIterations = localConfig.getMaxNumberOfIterations();
+        errorThreshold = localConfig.getErrorThreshold();
+
         String BASE_DIR = localConfig.getOutputPath() + "/";
 
         conf.setLong("seed", localConfig.getSeedRNG());
         conf.setInt("d", localConfig.getNumberOfDimensions());
         conf.setInt("k", localConfig.getNumberOfClusters());
+        conf.setInt("maxNumberOfReduceTasks", localConfig.getClusteringNumberOfReducers());
         conf.set("input", localConfig.getInputPath());
         conf.set("sampledMeans", BASE_DIR + "sampled-means");
         conf.set("intermediateMeans", BASE_DIR + "intermediate-means");
@@ -131,7 +138,8 @@ public class kMeans {
             System.out.printf("\nSTEP: %d - PREV_ERR: %f - ERR: %f - CHANGE: %.2f%%\n\n", step, prev_err, err, (prev_err - err)/prev_err * 100);
 
             step++;
-        } while (prev_err == Double.POSITIVE_INFINITY || (prev_err - err)/prev_err > 0.01); // error changing in 1%
+        } while (prev_err == Double.POSITIVE_INFINITY
+                || ((prev_err - err)/prev_err > errorThreshold && step < maxNumberOfIterations));
 
         fs.close();
 
