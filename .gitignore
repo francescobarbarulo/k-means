@@ -4,3 +4,4 @@ target/
 env/
 venv/
 *.txt
+!requirements.txt
