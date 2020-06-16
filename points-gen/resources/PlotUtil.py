@@ -4,7 +4,7 @@ This is a Plot utility class used for plotting the result if the code is running
 import matplotlib.pyplot as plt
 
 
-class PLotUtil:
+class PlotUtil:
 
     @staticmethod
     def plot_list(points, col='blue', mark='o', sz=20):
@@ -26,7 +26,7 @@ class PLotUtil:
                 plt.scatter(pt[0], pt[1], color='green')
             elif closest_mean(pt, means) == 3:
                 plt.scatter(pt[0], pt[1], color='yellow')
-        PLotUtil.plot_list(means, col='black', mark='*', sz=400)
+        PlotUtil.plot_list(means, col='black', mark='*', sz=400)
         plt.show()
 
     @staticmethod
