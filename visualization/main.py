@@ -22,15 +22,22 @@ def main():
     centroids = np.loadtxt(centroids_f, float, delimiter=',')
     points = np.loadtxt(dataset_f, float, delimiter=',')
 
-    colors = cm.rainbow(np.linspace(0.3, 0.9, len(centroids)))
+    colors = cm.rainbow(np.linspace(0, 1, len(centroids)))
 
-    for p in points:
-        index = closest_mean(p, centroids)
-        plt.scatter(p[0], p[1], color=colors[index])
+    pt_x = []
+    pt_y = []
+    pt_color = []
 
-    for c, color in zip(centroids, colors):
-        plt.scatter(c[0], c[1], color='black')
+    for pt in points:
+        pt_color.append(colors[closest_mean(pt, centroids)])
+        pt_x.append(pt[0])
+        pt_y.append(pt[1])
 
+    plt.scatter(pt_x, pt_y, c=pt_color, s=5, alpha=0.7)
+
+    c_x = [pt[0] for pt in centroids]
+    c_y = [pt[1] for pt in centroids]
+    plt.scatter(c_x, c_y, color='black', s=5, alpha=0.7)
     plt.show()
 
 
