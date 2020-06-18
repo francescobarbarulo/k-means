@@ -50,15 +50,21 @@ def random_points(number_of_points, number_of_dimensions):
     print("Generated {}".format(filename))
 
 
-def main():
-    number_of_points = int(sys.argv[1])
-    number_of_dimensions = int(sys.argv[2])
+def main(_, number_of_points=None, number_of_dimensions=None, t='random'):
+    if number_of_points is None or number_of_dimensions is None:
+        print("Usage: python main.py <number_of_points> <number_of_dimensions> [<type>]\n"
+              "  - type = {random, cluster}")
+        return
 
-    if len(sys.argv) == 4 and sys.argv[3] == 'cluster':
-        clusterable_points(number_of_points)
-    else:
-        random_points(number_of_points, number_of_dimensions)
+    try:
+        if t == 'cluster':
+            clusterable_points(int(number_of_points))
+        else:
+            random_points(int(number_of_points), int(number_of_dimensions))
+    except ValueError:
+        print("Usage: python main.py <number_of_points> <number_of_dimensions> [<type>]\n"
+              "- type = {random, cluster}")
 
 
 if __name__ == '__main__':
-    main()
+    main(*sys.argv)
