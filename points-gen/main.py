@@ -50,10 +50,14 @@ def random_points(number_of_points, number_of_dimensions):
     print("Generated {}".format(filename))
 
 
+def usage():
+    return "Usage: python main.py <number_of_points> <number_of_dimensions> [<type>]\n" \
+           "- type = {random, cluster}"
+
+
 def main(_, number_of_points=None, number_of_dimensions=None, t='random'):
     if number_of_points is None or number_of_dimensions is None:
-        print("Usage: python main.py <number_of_points> <number_of_dimensions> [<type>]\n"
-              "  - type = {random, cluster}")
+        print(usage())
         return
 
     try:
@@ -62,8 +66,7 @@ def main(_, number_of_points=None, number_of_dimensions=None, t='random'):
         else:
             random_points(int(number_of_points), int(number_of_dimensions))
     except ValueError:
-        print("Usage: python main.py <number_of_points> <number_of_dimensions> [<type>]\n"
-              "- type = {random, cluster}")
+        print(usage())
 
 
 if __name__ == '__main__':
