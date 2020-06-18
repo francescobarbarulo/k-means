@@ -25,25 +25,10 @@ def main(_, centroids_f=None, dataset_f=None):
 
     cmap = cm.get_cmap('plasma')
     colors = cmap(np.linspace(0, 1, len(centroids)))
+    pt_color = [colors[closest_mean(pt, centroids)] for pt in points]
 
-    pt_x = []
-    pt_y = []
-    pt_color = []
-
-    c_x = []
-    c_y = []
-
-    for pt in points:
-        pt_color.append(colors[closest_mean(pt, centroids)])
-        pt_x.append(pt[0])
-        pt_y.append(pt[1])
-
-    for pt in centroids:
-        c_x.append(pt[0])
-        c_y.append(pt[1])
-
-    plt.scatter(pt_x, pt_y, c=pt_color, s=1, alpha=1)
-    plt.scatter(c_x, c_y, color='black', s=5, alpha=1)
+    plt.scatter(points[:, 0], points[:, 1], c=pt_color, s=1, alpha=1)
+    plt.scatter(centroids[:, 0], centroids[:, 1], color='black', s=5, alpha=1)
     plt.show()
 
 
