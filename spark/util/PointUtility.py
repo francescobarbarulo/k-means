@@ -25,14 +25,12 @@ class PointUtility:
         return partial_c1[0] + partial_c2[0], partial_c1[1] + partial_c2[1]
 
     @staticmethod
-    def compute_new_means(partial_means):
-        new_means = []
+    def compute_new_mean(partial_mean):
+        # partial_mean is a tuple (old_mean, (sum_of_points, number_of_points))
+        partial_sum = partial_mean[1]
+        new_mean = partial_sum[0]/partial_sum[1]
 
-        for i in range(len(partial_means)):
-            partial_sum = partial_means[i][1]
-            new_means.append(partial_sum[0]/partial_sum[1])
-
-        return new_means
+        return new_mean
 
     @staticmethod
     def compute_min_squared_distance(point, means):

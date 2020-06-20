@@ -4,7 +4,6 @@ from pyspark import SparkContext
 
 
 def delete_output_file(output_file, spark_context):
-    URI = spark_context._gateway.jvm.java.net.URI
     Path = spark_context._gateway.jvm.org.apache.hadoop.fs.Path
     FileSystem = spark_context._gateway.jvm.org.apache.hadoop.fs.FileSystem
 
@@ -55,8 +54,10 @@ def main():
     completed_iterations = 0
 
     while completed_iterations < config.get_maximum_number_of_iterations():
-        partial_means_rdd = points_rdd.map(lambda point: PointUtility.get_closest_mean(point, iteration_means.value)).reduceByKey(lambda x, y: PointUtility.sum_partial_means(x, y))
-        new_means = PointUtility.compute_new_means(partial_means_rdd.collect())
+        new_means = points_rdd.map(lambda point: PointUtility.get_closest_mean(point, iteration_means.value))\
+                            .reduceByKey(lambda x, y: PointUtility.sum_partial_means(x, y))\
+                            .map(lambda partial_mean: PointUtility.compute_new_mean(partial_mean))\
+                            .collect()
 
         # Broadcast the new means and compute the value of the objective function to minimize.
         iteration_means = spark_context.broadcast(new_means)
@@ -70,7 +71,6 @@ def main():
         last_objective_function = objective_function
         completed_iterations += 1
 
-    spark_context.stop()
     print("****** Maximum number of iterations reached: " + str(completed_iterations) + " ******")
 
 
