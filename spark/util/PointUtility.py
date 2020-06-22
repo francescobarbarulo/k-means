@@ -22,6 +22,7 @@ class PointUtility:
 
     @staticmethod
     def sum_partial_means(partial_c1, partial_c2):
+        # Each tuple has the format (sum_of_points, number_of_points)
         return partial_c1[0] + partial_c2[0], partial_c1[1] + partial_c2[1]
 
     @staticmethod
