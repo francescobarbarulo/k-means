@@ -139,7 +139,7 @@ public class kMeans {
 
             step++;
         } while (prev_err == Double.POSITIVE_INFINITY
-                || ((prev_err - err)/prev_err > errorThreshold && step < maxNumberOfIterations));
+                || (100 * (prev_err - err)/prev_err > errorThreshold && step < maxNumberOfIterations));
 
         fs.close();
 
