@@ -138,7 +138,6 @@ public class kMeans {
             System.out.printf("\nSTEP: %d - PREV_ERR: %f - ERR: %f - CHANGE: %.2f%%\n\n", step, prev_err, err, (prev_err - err)/prev_err * 100);
 
             step++;
-            System.out.println("step count: " + step);
         } while (prev_err == Double.POSITIVE_INFINITY
                 || (100 * (prev_err - err)/prev_err > errorThreshold && step < maxNumberOfIterations));
 

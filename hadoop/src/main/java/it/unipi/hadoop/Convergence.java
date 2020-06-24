@@ -28,11 +28,8 @@ public class Convergence {
             Configuration conf = context.getConfiguration();
             error_accumulator = (double) 0.0;
             /*
-                Prepare the hashmap for the in-mapper combiner.
-                The hashmap will contain an entry for each final centroid as key,
-                and the summation of the distances between it and the closest points
-                that belong to the cluster:
-                { mean: distance }
+                prepare the list of means so that using the list we
+                can find the distance a point to the nearest mean.
              */
 
             means = new ArrayList<Point>();
@@ -49,8 +46,6 @@ public class Convergence {
                 while ((line = br.readLine()) != null) {
                     Point mean = new Point(line);
                     means.add(mean);
-                    System.out.println("the mean: " + mean);
-                    System.out.println("means length" + means.size());
                 }
                 br.close();
             }
@@ -60,13 +55,8 @@ public class Convergence {
             /*
                 The mapper gets a point and search for the closest mean.
                 Then it sums the distance between them to the
-                current value of the distance.
-                The mapper will emit every mean with the sum of the distances
-                with the point of the cluster:
-                {
-                    key: mean
-                    value: distance
-                }
+                current value of the distance that is accumulated for
+                all previous points.
              */
 
             double minDistance = Double.POSITIVE_INFINITY;
@@ -81,15 +71,13 @@ public class Convergence {
                 }
             }
 
-            //distance.put(closestMean, distance.get(closestMean) + minDistance);
             error_accumulator += minDistance;
         }
 
         public void cleanup(Context context) throws IOException, InterruptedException {
-            /*for (Map.Entry<Point, Double> entry: distance.entrySet()){
-                outputValue.set(entry.getValue());
-                context.write(entry.getKey(), outputValue);
-            }*/
+            /*
+            * export the sums of the distances using a comon key for the reducer.
+            * */
             Text outKey = new Text("common_key");
             context.write(outKey, new DoubleWritable(error_accumulator));
 
@@ -107,8 +95,7 @@ public class Convergence {
 
         public void reduce(Text key, Iterable<DoubleWritable> values, Context context) {
             /*
-                The reducer sums up all the distances related to a mean got by key.
-                The sum represents the convergence error.
+                The reducer sums up all the distances that it got from the mappers
              */
             for (DoubleWritable value: values)
                 sum += value.get();
