@@ -18,14 +18,15 @@ import java.net.URI;
 import java.util.*;
 
 public class Convergence {
-    public static class ConvergenceMapper extends Mapper<LongWritable, Text, Point, DoubleWritable> {
+    public static class ConvergenceMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {
 
-        Map<Point, Double> distance;
+        List<Point> means;
         final static DoubleWritable outputValue = new DoubleWritable();
+        static double error_accumulator;
 
         public void setup(Context context) throws IOException {
             Configuration conf = context.getConfiguration();
-
+            error_accumulator = (double) 0.0;
             /*
                 Prepare the hashmap for the in-mapper combiner.
                 The hashmap will contain an entry for each final centroid as key,
@@ -34,7 +35,7 @@ public class Convergence {
                 { mean: distance }
              */
 
-            distance = new HashMap<>();
+            means = new ArrayList<Point>();
 
             URI[] cacheFiles = context.getCacheFiles();
             FileSystem fs = FileSystem.get(conf);
@@ -47,9 +48,10 @@ public class Convergence {
                 String line;
                 while ((line = br.readLine()) != null) {
                     Point mean = new Point(line);
-                    distance.put(mean, 0.0);
+                    means.add(mean);
+                    System.out.println("the mean: " + mean);
+                    System.out.println("means length" + means.size());
                 }
-
                 br.close();
             }
         }
@@ -72,26 +74,29 @@ public class Convergence {
 
             Point p = new Point(value.toString());
 
-            for (Point m: distance.keySet()){
+            for (Point m: means){
                 double d = p.getSquaredDistance(m);
                 if (d < minDistance){
                     minDistance = d;
-                    closestMean = m;
                 }
             }
 
-            distance.put(closestMean, distance.get(closestMean) + minDistance);
+            //distance.put(closestMean, distance.get(closestMean) + minDistance);
+            error_accumulator += minDistance;
         }
 
         public void cleanup(Context context) throws IOException, InterruptedException {
-            for (Map.Entry<Point, Double> entry: distance.entrySet()){
+            /*for (Map.Entry<Point, Double> entry: distance.entrySet()){
                 outputValue.set(entry.getValue());
                 context.write(entry.getKey(), outputValue);
-            }
+            }*/
+            Text outKey = new Text("common_key");
+            context.write(outKey, new DoubleWritable(error_accumulator));
+
         }
     }
 
-    public static class ConvergenceReducer extends Reducer<Point, DoubleWritable, NullWritable, DoubleWritable> {
+    public static class ConvergenceReducer extends Reducer<Text, DoubleWritable, NullWritable, DoubleWritable> {
 
         static double sum;
         final static DoubleWritable outputValue = new DoubleWritable();
@@ -100,7 +105,7 @@ public class Convergence {
             sum = 0.0;
         }
 
-        public void reduce(Point key, Iterable<DoubleWritable> values, Context context) {
+        public void reduce(Text key, Iterable<DoubleWritable> values, Context context) {
             /*
                 The reducer sums up all the distances related to a mean got by key.
                 The sum represents the convergence error.
@@ -128,7 +133,7 @@ public class Convergence {
         job.setReducerClass(ConvergenceReducer.class);
 
         // Set key-value output format
-        job.setMapOutputKeyClass(Point.class);
+        job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(DoubleWritable.class);
 
         job.setOutputKeyClass(NullWritable.class);
