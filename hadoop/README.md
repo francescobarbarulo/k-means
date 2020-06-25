@@ -10,7 +10,7 @@ mvn clean package
 
 3. Copy the dataset to the Hadoop Distributed File System (HDFS) in the directory specified in the configuraiton file
 
-4. Run the jar file **with dipendencies** by:
+4. Run the jar file **with dependencies** by:
 
 ```bash
 hadoop jar target/kMeans-1.0-SNAPSHOT-with_dependencies.jar it.unipi.hadoop.kMeans
