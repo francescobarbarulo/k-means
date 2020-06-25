@@ -24,7 +24,7 @@ class Circle:
 
 
 if __name__ == '__main__':
-    num_samples = 100
+    num_samples = 150
     centers = [[25, 75], [50, 25], [75, 75]]
     origin = Point(0, 0)
     radius = 20
