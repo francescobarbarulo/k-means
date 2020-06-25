@@ -28,7 +28,6 @@ public class LocalConfiguration {
         try{
             Wini config = new Wini(new File(configPath));
 
-            //numberOfPoints = Long.parseLong(config.get("Dataset", "numberOfPoints"));
             numberOfDimensions = Integer.parseInt(config.get("Dataset", "numberOfDimensions"));
             numberOfClusters = Integer.parseInt(config.get("Dataset", "numberOfClusters"));
             inputPath = config.get("Dataset", "inputPath");
@@ -39,7 +38,7 @@ public class LocalConfiguration {
             maxNumberOfIterations = Integer.parseInt(config.get("K-means", "maxNumberOfIterations"));
             verbose = Boolean.parseBoolean(config.get("Hadoop", "verbose"));
 
-            //validateConfiguration();
+            validateConfiguration();
         } catch(IOException e){
             System.err.println(e.getMessage());
             System.exit(1);
