@@ -46,7 +46,6 @@ public class Convergence {
                 while ((line = br.readLine()) != null) {
                     Point mean = new Point(line);
                     means.add(mean);
-                    System.out.print("\n****" + means + "****\n");
                 }
                 br.close();
             }
