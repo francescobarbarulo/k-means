@@ -2,8 +2,6 @@ import sys
 import numpy as np
 import random
 import math
-from resources.PlotUtil import PlotUtil
-
 
 class Point:
     def __init__(self, x, y):
@@ -34,9 +32,6 @@ def clusterable_points(number_of_points):
             r = circle.radius * math.sqrt(random.random())
             x, y = math.cos(p) * r + center_x, math.sin(p) * r + center_y
             values = np.concatenate((values, np.array([[x, y]], dtype=float)), axis=0)
-
-    #PlotUtil.plot_list(values)
-    #PlotUtil.show()
 
     filename = "{}-2d-clusterbale-points.txt".format(number_of_points * len(centers))
     np.savetxt(filename, values, delimiter=",", fmt="%s")
