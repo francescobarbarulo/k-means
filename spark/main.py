@@ -20,7 +20,7 @@ def stop_condition(objective_function, last_objective_function, iteration_number
         print("****** First iteration: stop condition not checked. ******\n")
         return False
 
-    error = 100*(abs(last_objective_function - objective_function)/last_objective_function)
+    error = 100*((last_objective_function - objective_function)/last_objective_function)
 
     print("****** Current error: " + str(error) + "% ******")
     print("****** Error threshold: " + str(error_threshold) + "% ******\n")
