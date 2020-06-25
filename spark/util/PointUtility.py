@@ -9,10 +9,7 @@ class PointUtility:
 
     @staticmethod
     def get_closest_mean(point, means):
-        means_matrix = np.array(means)
-        matrix_of_point = np.tile(point, (means_matrix.shape[0], 1))
-
-        squared_distance = np.sum(((matrix_of_point - means_matrix) ** 2), axis=1)
+        squared_distance = np.sum(((np.array(means) - point) ** 2), axis=1)
 
         # Take the minimum distance (first one in case of multiple equal distances).
         closest_mean_index = np.where(squared_distance == squared_distance.min())[0][0]
@@ -27,7 +24,7 @@ class PointUtility:
 
     @staticmethod
     def compute_new_mean(partial_mean):
-        # partial_mean is a tuple (old_mean, (sum_of_points, number_of_points))
+        # partial_mean is a tuple ((old_mean), (sum_of_points, number_of_points))
         partial_sum = partial_mean[1]
         new_mean = partial_sum[0]/partial_sum[1]
 
@@ -35,10 +32,7 @@ class PointUtility:
 
     @staticmethod
     def compute_min_squared_distance(point, means):
-        means_matrix = np.array(means)
-        matrix_of_point = np.tile(point, (means_matrix.shape[0], 1))
-        squared_distance = np.sum(((matrix_of_point - means_matrix) ** 2), axis=1)
-
+        squared_distance = np.sum(((np.array(means) - point) ** 2), axis=1)
         return squared_distance.min()
 
     @staticmethod
