@@ -8,7 +8,7 @@ mvn clean package
 
 2. Set the parameters in the configuration file `config.ini`
 
-3. Copy the dataset to the Hadoop Distributed File System (HDFS) in the directory specified in the configuraiton file
+3. Copy the dataset to the Hadoop Distributed File System (HDFS) in the directory specified in the configuration file
 
 4. Run the jar file **with dependencies** by:
 
