@@ -72,7 +72,7 @@ def main():
         completed_iterations += 1
 
     print("****** Maximum number of iterations reached: " + str(completed_iterations) + " ******")
-
+    spark_context.stop()
 
 if __name__ == "__main__":
     main()
