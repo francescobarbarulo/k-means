@@ -1,40 +1,36 @@
 import numpy as np
 
 
-class PointUtility:
+def parse_point(row):
+    return np.array(row.split(','), dtype=np.float64)
 
-    @staticmethod
-    def parse_point(row):
-        return np.array(row.split(','), dtype=np.float64)
 
-    @staticmethod
-    def get_closest_mean(point, means):
-        squared_distance = np.sum(((np.array(means) - point) ** 2), axis=1)
+def get_closest_mean(point, means):
+    squared_distance = np.sum(((np.array(means) - point) ** 2), axis=1)
 
-        # Take the minimum distance (first one in case of multiple equal distances).
-        closest_mean_index = np.where(squared_distance == squared_distance.min())[0][0]
+    # Take the minimum distance (first one in case of multiple equal distances).
+    closest_mean_index = np.where(squared_distance == squared_distance.min())[0][0]
 
-        # Tuple used to make the ndarray hashable in reduceByKey()
-        return tuple(means[closest_mean_index]), (point, 1)
+    # Tuple used to make the ndarray hashable in reduceByKey()
+    return tuple(means[closest_mean_index]), (point, 1)
 
-    @staticmethod
-    def sum_partial_means(partial_c1, partial_c2):
-        # Each tuple has the format (sum_of_points, number_of_points)
-        return partial_c1[0] + partial_c2[0], partial_c1[1] + partial_c2[1]
 
-    @staticmethod
-    def compute_new_mean(partial_mean):
-        # partial_mean is a tuple ((old_mean), (sum_of_points, number_of_points))
-        partial_sum = partial_mean[1]
-        new_mean = partial_sum[0]/partial_sum[1]
+def sum_point_accumulators(accumulator_1, accumulator_2):
+    # Each accumulator tuple has the format (sum_of_points, number_of_points)
+    return accumulator_1[0] + accumulator_2[0], accumulator_1[1] + accumulator_2[1]
 
-        return new_mean
 
-    @staticmethod
-    def compute_min_squared_distance(point, means):
-        squared_distance = np.sum(((np.array(means) - point) ** 2), axis=1)
-        return squared_distance.min()
+def compute_new_mean(accumulator):
+    # accumulator is a tuple ((old_mean), (sum_of_points, number_of_points))
+    new_mean = accumulator[1][0]/accumulator[1][1]
 
-    @staticmethod
-    def to_string(point):
-        return np.array2string(point, separator=',')[1:-1].replace(' ', '')
+    return new_mean
+
+
+def compute_min_squared_distance(point, means):
+    squared_distance = np.sum(((np.array(means) - point) ** 2), axis=1)
+    return squared_distance.min()
+
+
+def to_string(point):
+    return np.array2string(point, separator=',')[1:-1].replace(' ', '')

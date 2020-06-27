@@ -1,5 +1,5 @@
-from util.PointUtility import PointUtility
 from util.LocalConfiguration import LocalConfiguration
+from util import PointUtility
 from pyspark import SparkContext
 
 
@@ -55,8 +55,8 @@ def main():
 
     while completed_iterations < config.get_maximum_number_of_iterations():
         new_means = points_rdd.map(lambda point: PointUtility.get_closest_mean(point, iteration_means.value))\
-                            .reduceByKey(lambda x, y: PointUtility.sum_partial_means(x, y))\
-                            .map(lambda partial_mean: PointUtility.compute_new_mean(partial_mean))\
+                            .reduceByKey(lambda x, y: PointUtility.sum_point_accumulators(x, y))\
+                            .map(lambda accumulator: PointUtility.compute_new_mean(accumulator))\
                             .collect()
 
         # Broadcast the new means and compute the value of the objective function to minimize.
