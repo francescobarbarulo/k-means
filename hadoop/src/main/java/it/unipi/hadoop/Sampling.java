@@ -27,7 +27,7 @@ public class Sampling {
         final static Point outputValue = new Point();
 
         /* In-Mapper Combiner: emit at most K points stored in the PriorityQueue */
-        static PriorityQueue<PriorityPoint> pq = new PriorityQueue<>();
+        final static PriorityQueue<PriorityPoint> pq = new PriorityQueue<>();
 
         public void setup(Context context){
             Configuration conf = context.getConfiguration();

@@ -33,8 +33,8 @@ public class kMeans {
         }
     }
 
-    public static double getConvergenceError() throws IOException {
-        double err;
+    public static double getObjectiveFunction() throws IOException {
+        double objFunction;
         InputStream is = fs.open(new Path(conf.get("convergence") + "/part-r-00000"));
         BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
@@ -45,9 +45,9 @@ public class kMeans {
             System.exit(1);
         }
 
-        err = Double.parseDouble(line);
+        objFunction = Double.parseDouble(line);
         br.close();
-        return err;
+        return objFunction;
     }
 
     public static void main(String[] args) throws InterruptedException, IOException, ClassNotFoundException {
@@ -76,7 +76,7 @@ public class kMeans {
         /*  (*
             # Sampling
             - input : points
-            - output: k sampled points
+            - output: k sampled points (sampled-means/)
          */
 
         Job sampling = Job.getInstance(conf, "sampling means");
@@ -88,11 +88,12 @@ public class kMeans {
         /* *) */
 
         int step = 0;
-        double err = Double.POSITIVE_INFINITY;
-        double prev_err;
+        double objFunction = Double.POSITIVE_INFINITY;
+        double prevObjFunction;
+        double variation;
 
         do {
-            prev_err = err;
+            prevObjFunction = objFunction;
 
             Path srcPath = (step == 0) ? new Path(conf.get("sampledMeans")) : new Path(conf.get("finalMeans"));
             Path dstPath = new Path(conf.get("intermediateMeans"));
@@ -133,13 +134,15 @@ public class kMeans {
 
             /* *) */
 
-            err = getConvergenceError();
+            objFunction = getObjectiveFunction();
 
-            System.out.printf("\nSTEP: %d - PREV_ERR: %f - ERR: %f - CHANGE: %.2f%%\n\n", step, prev_err, err, (prev_err - err)/prev_err * 100);
+            variation = (prevObjFunction - objFunction)/prevObjFunction * 100;
+
+            System.out.printf("\nSTEP: %d - PREV_OBJ_FUNCTION: %f - OBJ_FUNCTION: %f - CHANGE: %.2f%%\n\n", step, prevObjFunction, objFunction, variation);
 
             step++;
-        } while (prev_err == Double.POSITIVE_INFINITY
-                || (100 * (prev_err - err)/prev_err > errorThreshold && step < maxNumberOfIterations));
+        } while (prevObjFunction == Double.POSITIVE_INFINITY
+                || (variation > errorThreshold && step < maxNumberOfIterations));
 
         fs.close();
 

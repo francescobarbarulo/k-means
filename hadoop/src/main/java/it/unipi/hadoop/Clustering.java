@@ -20,8 +20,7 @@ public class Clustering {
     public static class ClusteringMapper extends Mapper<LongWritable, Text, Point, AccumulatorPoint> {
 
         static int D;
-
-        static Map<Point, AccumulatorPoint> centroidSummation;
+        final static Map<Point, AccumulatorPoint> centroidSummation = new HashMap<>();
 
         protected void setup(Context context) throws IOException {
             Configuration conf = context.getConfiguration();
@@ -35,7 +34,7 @@ public class Clustering {
                 { mean: (sum, n) }
              */
 
-            centroidSummation = new HashMap<>();
+            centroidSummation.clear();
 
             /* Get the means from cache, either sampled or computed in the previous step */
             URI[] cacheFiles = context.getCacheFiles();

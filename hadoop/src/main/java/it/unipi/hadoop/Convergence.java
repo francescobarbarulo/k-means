@@ -20,15 +20,15 @@ import java.util.*;
 public class Convergence {
     public static class ConvergenceMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {
 
-        static List<Point> means;
+        final static List<Point> means = new ArrayList<>() ;
         final static Text outputKey = new Text();
         final static DoubleWritable outputValue = new DoubleWritable();
-        static double errorAccumulator;
+        static double distanceAccumulator;
 
         public void setup(Context context) throws IOException {
             Configuration conf = context.getConfiguration();
-            errorAccumulator = 0.0;
-            means = new ArrayList<>();
+            distanceAccumulator = 0.0;
+            means.clear();
 
             /*
                 Prepare the list of means so that using the list we
@@ -70,7 +70,7 @@ public class Convergence {
                 }
             }
 
-            errorAccumulator += minDistance;
+            distanceAccumulator += minDistance;
         }
 
         public void cleanup(Context context) throws IOException, InterruptedException {
@@ -78,25 +78,25 @@ public class Convergence {
                 Emit the sums of the distances using a common key for the reducer.
             */
             outputKey.set("key");
-            outputValue.set(errorAccumulator);
+            outputValue.set(distanceAccumulator);
             context.write(outputKey, outputValue);
         }
     }
 
     public static class ConvergenceReducer extends Reducer<Text, DoubleWritable, NullWritable, DoubleWritable> {
 
-        static double sum;
+        static double objFunction;
         final static DoubleWritable outputValue = new DoubleWritable();
 
         public void reduce(Text key, Iterable<DoubleWritable> values, Context context) throws IOException, InterruptedException {
             /*
                 The single reducer sums up all the distances that it got from the mappers
              */
-            sum = 0.0;
+            objFunction = 0.0;
             for (DoubleWritable value: values)
-                sum += value.get();
+                objFunction += value.get();
 
-            outputValue.set(sum);
+            outputValue.set(objFunction);
             context.write(null, outputValue);
         }
     }
